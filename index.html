@@ -108,10 +108,10 @@ select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
     <div class="dropzone" id="dropzone">
       <div class="big">📥</div>
       <b>Excel dosyasını buraya sürükleyin veya tıklayın</b>
-      <span>TÜM sayfalar okunup birleştirilir · aynı sayfadaki tekrar yükleme satırları korunur · gün/ay formatı otomatik algılanır</span>
+      <span>Tarihler ham seri sayıdan saat dilimsiz hesaplanır → ±1 gün kayması imkânsız · aynı sayfadaki tekrar satırlar korunur</span>
     </div>
     <div class="upload-side">
-      <label class="chk"><input type="checkbox" id="merge"> Mevcut verilerle <b>&nbsp;birleştir</b> (kapalıysa yeni yükleme eski veriyi değiştirir)</label>
+      <label class="chk"><input type="checkbox" id="merge"> Mevcut verilerle <b>&nbsp;birleştir</b> (kapalıysa yeni yükleme eski veriyi TAMAMEN değiştirir)</label>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-outline" id="btnUpload2">Dosya Seç</button>
         <button class="btn btn-outline" id="btnMap">⚙️ Kolon Eşleştir</button>
@@ -179,7 +179,7 @@ select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
 <div class="modal-ov" id="diagOv">
   <div class="modal" style="max-width:760px">
     <h3>🔍 Excel Yükleme Teşhisi</h3>
-    <p class="hint">Solda Excel hücresindeki ham değer, sağda panele yorumlanan tarih. ❌ işaretliler tarih olarak okunamıyor. Not: Dosyayı yükledikten sonra sayfayı yenilemeden kullanın.</p>
+    <p class="hint">Solda Excel hücresindeki ham değer (tarih hücreleri Excel seri sayısı olarak gösterilir), sağda panele yorumlanan tarih. Dosyayı yükledikten sonra sayfayı yenilemeden kullanın.</p>
     <div id="diagBody"></div>
     <div class="map-actions"><button class="btn btn-outline" id="diagClose">Kapat</button></div>
   </div>
@@ -234,10 +234,15 @@ function asciiLower(s){return String(s??'')
   .toLowerCase();}
 function toNum(v){if(v===''||v==null)return 0;const n=parseFloat(String(v).replace(',','.'));return isNaN(n)?0:n;}
 
-/* ================= Tarih çözümleme ================= */
+/* ================= Tarih çözümleme — SAAT DİLİMSİZ =================
+   Excel tarihleri sayısal seri değerdir (1899-12-30'dan itibaren gün sayısı).
+   Dosyayı cellDates:false + raw:true okuduğumuz için tarih hücreleri HAM SAYI
+   olarak gelir ve aşağıda SAF TAKVİM MATEMATİĞİYLE (parse_date_code) çevrilir.
+   Saat dilimi hiçbir adımda devrede olmadığı için ±1 gün kayması mümkün değildir. */
 const MONTHS_TR={ocak:1,subat:2,mart:3,nisan:4,mayis:5,haziran:6,temmuz:7,agustos:8,eylul:9,ekim:10,kasim:11,aralik:12};
 function mkDate(y,mo,d){if(mo<1||mo>12||d<1||d>31)return null;const dt=new Date(y,mo-1,d);return isNaN(dt)?null:dt;}
-/* UTC gece yarısı değerlerini yerel takvim gününe çevir (+1 gün kaymasını önler) */
+function serialToParts(v){const d=XLSX.SSF.parse_date_code(v);return d?{y:d.y,mo:d.m,d:d.d}:null;}
+/* Yalnızca son çare metinler için; UTC-gece-yarısı kayması normalleştirilir */
 function normalizeDate(d){
   if(isNaN(d))return null;
   const lMid=d.getHours()===0&&d.getMinutes()===0;
@@ -247,29 +252,31 @@ function normalizeDate(d){
 }
 function parseDate(v){
   if(v==null||v==='')return null;
-  if(v instanceof Date)return normalizeDate(v);
+  /* 1) Ham Excel seri sayısı → saf takvim matematiği (ANA YOL) */
   if(typeof v==='number'){
-    if(v>20000&&v<80000){const d=XLSX.SSF.parse_date_code(v);return d?new Date(d.y,d.m-1,d.d):null;}
+    if(v>20000&&v<80000){const p=serialToParts(v);return p?new Date(p.y,p.mo-1,p.d):null;}
     return null;
   }
+  if(v instanceof Date)return normalizeDate(v);
   const s=String(v).trim();
   if(!s)return null;
+  /* 2) Metin tarihler */
   let m=s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/);           /* 2021-01-04 */
   if(m)return mkDate(+m[1],+m[2],+m[3]);
   m=s.match(/^(\d{1,2})[.\-\/](\d{1,2})[.\-\/](\d{2,4})/);           /* 04.01.2021 */
   if(m){
     let a=+m[1],b=+m[2],y=+m[3];if(y<100)y+=2000;
     let d,mo;
-    if(a>12){d=a;mo=b;}          /* ilk sayı 12'den büyükse kesin gün */
-    else if(b>12){mo=a;d=b;}     /* ikinci 12'den büyükse format aa/gg */
-    else{d=a;mo=b;}              /* belirsizse gün-önce (TR) */
+    if(a>12){d=a;mo=b;}
+    else if(b>12){mo=a;d=b;}
+    else{d=a;mo=b;}
     return mkDate(y,mo,d);
   }
   const tr=asciiLower(s);                                            /* "4 Ocak 2021" */
-  m=tr.match(/^(\d{1,2})\s+([a-z]+)\s+(\d{2,4})/);
+  m=tr.match(/^(\d{1,2})\s+([a-zçğıöşü]+)\s+(\d{2,4})/);
   if(m&&MONTHS_TR[m[2]]){let y=+m[3];if(y<100)y+=2000;return mkDate(y,MONTHS_TR[m[2]],+m[1]);}
   const n=parseFloat(s.replace(',','.'));
-  if(!isNaN(n)&&n>20000&&n<80000){const d=XLSX.SSF.parse_date_code(n);if(d)return new Date(d.y,d.m-1,d.d);}
+  if(!isNaN(n)&&n>20000&&n<80000){const p=serialToParts(n);if(p)return new Date(p.y,p.mo-1,p.d);}
   return normalizeDate(new Date(s));
 }
 function isoWeek(d){const dt=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
@@ -444,10 +451,10 @@ function rowsFromSheet(aoa,hi,cols){
   return out;
 }
 let WB=null;
-function sheetAoa(name){return XLSX.utils.sheet_to_json(WB.Sheets[name],{header:1,defval:''});}
-/* TÜM sayfaları oku ve birleştir. Kopya temizliği SADECE sayfalar ARASI:
-   farklı sayfalarda birebir aynı satırlar tek alınır;
-   AYNI sayfadaki tekrarlar (aynı güne 2 ayrı yükleme) KORUNUR. */
+/* raw:true → tarih hücreleri Date DEĞİL, ham seri sayı olarak gelir */
+function sheetAoa(name){return XLSX.utils.sheet_to_json(WB.Sheets[name],{header:1,defval:'',raw:true});}
+/* TÜM sayfaları oku ve birleştir. Kopya temizliği SADECE sayfalar ARASI;
+   aynı sayfadaki tekrarlar (aynı güne 2 ayrı yükleme) korunur. */
 function autoParse(){
   const sig=r=>[r.musteri,r.bolum,r.kategori,r.tip,r.adet,r.tarihStr,r.parsiyelM3,r.toplamM3].join('|');
   const perSheet=new Map();
@@ -516,8 +523,12 @@ function handleFile(file){
       if(/\.csv$/i.test(file.name)){
         let txt=new TextDecoder('utf-8').decode(e.target.result);
         if(txt.includes('\uFFFD'))txt=new TextDecoder('windows-1254').decode(e.target.result);
-        wb=XLSX.read(txt,{type:'string',cellDates:true});
-      }else wb=XLSX.read(new Uint8Array(e.target.result),{type:'array',cellDates:true});
+        wb=XLSX.read(txt,{type:'string'});
+      }else{
+        /* cellDates YOK → tarih hücreleri Date'e çevrilmez, ham seri sayı kalır.
+           Böylece saat dilimi dönüşümü hiç yapılmaz → ±1 gün kayması imkânsız. */
+        wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+      }
       WB=wb;
       console.log('[Sevkiyat] Sayfalar:',WB.SheetNames);
       const res=autoParse();
@@ -580,7 +591,10 @@ function updateMapPreview(){
 function rawCellDesc(v){
   if(v==null||v==='')return '(boş)';
   if(v instanceof Date)return 'Tarih hücresi → '+v.getFullYear()+'-'+pad2(v.getMonth()+1)+'-'+pad2(v.getDate());
-  if(typeof v==='number')return 'Sayı → '+v;
+  if(typeof v==='number'){
+    if(v>20000&&v<80000){const p=serialToParts(v);return `Excel seri no → ${v} (= ${p.d}.${p.mo}.${p.y})`;}
+    return 'Sayı → '+v;
+  }
   return 'Metin → "'+String(v)+'"';
 }
 function runDiag(){

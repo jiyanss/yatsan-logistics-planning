@@ -19,7 +19,10 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 .brand .logo{font-size:28px}
 .brand h1{font-size:18px;font-weight:700}
 .brand span{font-size:12px;opacity:.75}
-.actions{display:flex;gap:8px;flex-wrap:wrap}
+.pill{font-size:11.5px;font-weight:700;padding:5px 12px;border-radius:99px;background:rgba(255,255,255,.15);color:#fff;white-space:nowrap}
+.pill.cloud{background:rgba(5,150,105,.45)}
+.pill.err{background:rgba(220,38,38,.55)}
+.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .btn{border:none;border-radius:8px;padding:9px 16px;font-size:13.5px;font-weight:600;cursor:pointer;transition:.15s;font-family:inherit}
 .btn:active{transform:scale(.97)}
 .btn-primary{background:var(--primary);color:#fff}
@@ -43,7 +46,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 .stat{font-size:12.5px;color:var(--muted);border-top:1px solid var(--border);padding-top:8px}
 .filters-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;align-items:end}
 .field label{display:block;font-size:11.5px;font-weight:600;color:var(--muted);margin-bottom:4px}
-select,input[type=date],input[type=search],input[type=number]{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:#fff;font-family:inherit;color:var(--text)}
+select,input{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:#fff;font-family:inherit;color:var(--text)}
 select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
 .filter-foot{display:flex;justify-content:space-between;align-items:center;margin-top:10px;flex-wrap:wrap;gap:8px}
 #resultCount{color:var(--muted);font-size:12.5px}
@@ -70,7 +73,6 @@ select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
 .toast{position:fixed;bottom:22px;right:22px;background:#0f172a;color:#fff;padding:12px 20px;border-radius:10px;font-size:13.5px;box-shadow:0 8px 24px rgba(0,0,0,.3);opacity:0;pointer-events:none;transform:translateY(12px);transition:.25s;z-index:99;max-width:420px}
 .toast.show{opacity:1;transform:none}
 .toast.error{background:var(--red)}
-/* Kolon eşleştirme modalı */
 .modal-ov{position:fixed;inset:0;background:rgba(15,23,42,.55);display:none;align-items:center;justify-content:center;z-index:80;padding:16px}
 .modal-ov.show{display:flex}
 .modal{background:#fff;border-radius:14px;max-width:880px;width:100%;max-height:90vh;overflow:auto;padding:20px 22px;box-shadow:0 20px 60px rgba(0,0,0,.35)}
@@ -78,6 +80,7 @@ select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
 .map-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin:12px 0}
 .map-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
 #mapPreview{padding:10px 12px;background:#f8fafc;border:1px solid var(--border);border-radius:8px;font-size:12.5px;line-height:1.5}
+#cfgStatus{padding:10px 12px;background:#f8fafc;border:1px solid var(--border);border-radius:8px;font-size:12.5px;line-height:1.5}
 </style>
 </head>
 <body>
@@ -88,9 +91,11 @@ select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
     <div><h1>Sevkiyat Yükleme Paneli</h1><span>Bölüm · Sevkiyat Tipi · Hacim (m³) Raporlama</span></div>
   </div>
   <div class="actions">
+    <span class="pill" id="syncPill">💾 başlatılıyor…</span>
     <button class="btn btn-primary" id="btnUpload">📂 Excel Yükle</button>
     <button class="btn btn-ghost" id="btnTemplate">⬇ Şablon</button>
     <button class="btn btn-ghost" id="btnExport">📊 Rapor İndir</button>
+    <button class="btn btn-ghost" id="btnCloud">☁️ Bağlantı</button>
     <button class="btn btn-danger" id="btnClear">🗑 Temizle</button>
   </div>
 </header>
@@ -98,12 +103,11 @@ select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
 <main class="container">
   <input type="file" id="fileInput" accept=".xlsx,.xlsm,.xls,.csv" hidden>
 
-  <!-- YÜKLEME -->
   <section class="card upload-card">
     <div class="dropzone" id="dropzone">
       <div class="big">📥</div>
       <b>Excel dosyasını buraya sürükleyin veya tıklayın</b>
-      <span>Tüm sayfalar taranır, başlık ve kolonlar otomatik tanınır. Tanınamazsa kolonları elle eşleştirebilirsiniz.</span>
+      <span>Tüm sayfalar taranır, kolonlar otomatik tanınır; gerekirse elle eşleştirilirsiniz.</span>
     </div>
     <div class="upload-side">
       <label class="chk"><input type="checkbox" id="merge"> Mevcut verilerle <b>&nbsp;birleştir</b> (aynı kayıt varsa günceller)</label>
@@ -116,7 +120,6 @@ select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
     </div>
   </section>
 
-  <!-- FİLTRELER -->
   <section class="card">
     <div class="filters-grid">
       <div class="field"><label>Yıl</label><select id="fYear"></select></div>
@@ -133,7 +136,6 @@ select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
     </div>
   </section>
 
-  <!-- KPI -->
   <section class="kpi-grid">
     <div class="kpi"><div class="ic" style="background:var(--primary)">🚛</div><div><div class="val" id="kVehicles">0</div><div class="lbl">Toplam Yüklenen Araç</div></div></div>
     <div class="kpi"><div class="ic" style="background:var(--green)">📦</div><div><div class="val" id="kM3">0</div><div class="lbl">Toplam Hacim (m³)</div></div></div>
@@ -141,7 +143,6 @@ select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
     <div class="kpi"><div class="ic" style="background:var(--purple)">📆</div><div><div class="val" id="kDays">0</div><div class="lbl">Yükleme Yapılan Gün</div></div></div>
   </section>
 
-  <!-- GRAFİKLER -->
   <section class="charts-grid">
     <div class="card chart-card"><h3>🏭 Bölümlere Göre Yükleme</h3><div class="ch-wrap"><canvas id="chDep"></canvas></div></div>
     <div class="card chart-card"><h3>🚛 Sevkiyat Tipi Dağılımı (Araç)</h3><div class="ch-wrap"><canvas id="chTip"></canvas></div></div>
@@ -149,27 +150,46 @@ select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
     <div class="card chart-card"><h3>📅 Haftalık Özet</h3><div class="ch-wrap"><canvas id="chWeek"></canvas></div></div>
   </section>
 
-  <!-- RAPORLAR -->
   <section class="card"><h3>📌 Bölüm × Sevkiyat Tipi Matrisi</h3><p class="hint">Hücre formatı: araç adeti / m³</p><div class="tbl-wrap" id="tblMatrix"></div></section>
   <section class="card"><h3>📅 Haftalık Rapor (bölüm bazında m³ kırılımı)</h3><div class="tbl-wrap" id="tblWeekly"></div></section>
   <section class="card"><h3>🗓 Günlük Rapor</h3><div class="tbl-wrap" id="tblDaily"></div></section>
   <section class="card"><h3>📋 Tüm Kayıtlar</h3><div class="tbl-wrap tall" id="tblData"></div></section>
 </main>
 
-<!-- KOLON EŞLEŞTİRME MODALI -->
+<!-- KOLON EŞLEŞTİRME -->
 <div class="modal-ov" id="mapperOv">
   <div class="modal">
     <h3>⚙️ Kolon Eşleştirme</h3>
     <p class="hint" id="mapFile">Excel'inizdeki hangi kolon hangi veriyi gösteriyor, buradan seçin.</p>
     <div class="map-grid">
       <div class="field"><label>Çalışma Sayfası</label><select id="mapSheet"></select></div>
-      <div class="field"><label>Başlık Satırı No (Excel'deki satır numarası)</label><input type="number" id="mapHeadRow" min="1" max="50" value="1"></div>
+      <div class="field"><label>Başlık Satırı No</label><input type="number" id="mapHeadRow" min="1" max="50" value="1"></div>
     </div>
     <div class="map-grid" id="mapFields"></div>
     <div id="mapPreview"></div>
     <div class="map-actions">
       <button class="btn btn-primary" id="mapApply">✔ Bu Eşlemeyle Yükle</button>
       <button class="btn btn-outline" id="mapCancel">Vazgeç</button>
+    </div>
+  </div>
+</div>
+
+<!-- CLOUD BAĞLANTI -->
+<div class="modal-ov" id="cloudOv">
+  <div class="modal" style="max-width:640px">
+    <h3>☁️ Merkezi Veritabanı (Supabase)</h3>
+    <p class="hint">Bağlanırsanız veriler sunucuda saklanır: sayfa yenilemede silinmez, hangi cihazdan girerseniz aynı veriyi görürsünüz, ekipçe ortak kullanılır. Bağlanmazsanız veriler yalnızca bu tarayıcıda (IndexedDB) tutulur.<br>Kurulum: supabase.com → ücretsiz proje → SQL Editor'e panelden SQL'i çalıştır → Settings→API'den URL ve Key kopyala.</p>
+    <div class="map-grid">
+      <div class="field"><label>Project URL</label><input type="text" id="cfgUrl" placeholder="https://xxxxx.supabase.co"></div>
+      <div class="field"><label>Anon Public Key</label><input type="text" id="cfgKey" placeholder="eyJhbGciOi..."></div>
+      <div class="field"><label>Tablo Adı</label><input type="text" id="cfgTable" value="sevkiyat"></div>
+    </div>
+    <div id="cfgStatus"></div>
+    <div class="map-actions">
+      <button class="btn btn-primary" id="cfgConnect">🔌 Bağlan</button>
+      <button class="btn btn-outline" id="cfgRefresh">🔄 Buluttan Yenile</button>
+      <button class="btn btn-danger" id="cfgDisconnect">Bağlantıyı Kes</button>
+      <button class="btn btn-outline" id="cfgClose">Kapat</button>
     </div>
   </div>
 </div>
@@ -185,6 +205,8 @@ const nf0=new Intl.NumberFormat('tr-TR',{maximumFractionDigits:0});
 const nf1=new Intl.NumberFormat('tr-TR',{maximumFractionDigits:1});
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uniq=a=>[...new Set(a)];
+const pad2=n=>String(n).padStart(2,'0');
+const isoDay=d=>`${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
 function colLetter(i){let s='';i++;while(i>0){const m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=Math.floor((i-1)/26);}return s;}
 
 function norm(s){return String(s??'')
@@ -197,7 +219,9 @@ function parseDate(v){
   if(v instanceof Date)return isNaN(v)?null:v;
   if(typeof v==='number'&&v>20000&&v<80000){const d=XLSX.SSF.parse_date_code(v);return d?new Date(d.y,d.m-1,d.d):null;}
   const s=String(v).trim();
-  const m=s.match(/^(\d{1,2})[.\-\/](\d{1,2})[.\-\/](\d{2,4})/);
+  let m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if(m)return new Date(+m[1],+m[2]-1,+m[3]);
+  m=s.match(/^(\d{1,2})[.\-\/](\d{1,2})[.\-\/](\d{2,4})/);
   if(m){let y=+m[3];if(y<100)y+=2000;return new Date(y,+m[2]-1,+m[1]);}
   const d=new Date(s);return isNaN(d)?null:d;
 }
@@ -205,28 +229,119 @@ function isoWeek(d){const dt=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.ge
   const day=dt.getUTCDay()||7;dt.setUTCDate(dt.getUTCDate()+4-day);
   const ys=new Date(Date.UTC(dt.getUTCFullYear(),0,1));
   return{year:dt.getUTCFullYear(),week:Math.ceil((((dt-ys)/864e5)+1)/7)};}
-function fmtDate(d){return d?`${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`:'';}
+function fmtDate(d){return d?`${pad2(d.getDate())}.${pad2(d.getMonth()+1)}.${d.getFullYear()}`:'';}
+function hydrate(r){
+  if(!(r.tarih instanceof Date)||isNaN(r.tarih)){
+    if(typeof r.tarih==='string'&&/^\d{4}-\d{2}-\d{2}/.test(r.tarih)){const[a,b,c]=r.tarih.split('-').map(Number);r.tarih=new Date(a,b-1,c);}
+    else if(r.tarih){const d=new Date(r.tarih);r.tarih=isNaN(d)?null:d;}
+    else r.tarih=null;
+  }
+  r.tarihStr=r.tarih?fmtDate(r.tarih):'';
+  r.yil=r.tarih?r.tarih.getFullYear():'';
+  r.hafta=r.tarih?isoWeek(r.tarih).week:0;
+  r.gun=r.tarih?GUNLER[r.tarih.getDay()]:'';
+  return r;
+}
+const keyOf=r=>[r.musteri,r.bolum,r.tip,r.tarihStr,r.adet].join('|');
 
 /* ================= Durum ================= */
-const LS_KEY='sevkiyat_dashboard_v1';
-let DATA=[],charts={},lastSaved=null,WB=null;
+let DATA=[],charts={};
 
-function persist(){lastSaved=Date.now();localStorage.setItem(LS_KEY,JSON.stringify({savedAt:lastSaved,rows:DATA}));}
-function loadPersisted(){try{const o=JSON.parse(localStorage.getItem(LS_KEY));
-  if(o&&Array.isArray(o.rows)){DATA=o.rows.map(r=>({...r,tarih:r.tarih?new Date(r.tarih):null}));lastSaved=o.savedAt;return true;}}catch(e){}return false;}
+/* ================= IndexedDB (yerel kalıcılık) ================= */
+function idbOpen(){return new Promise((res,rej)=>{const r=indexedDB.open('sevkiyat_db',1);
+  r.onupgradeneeded=()=>r.result.createObjectStore('kv');
+  r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
+async function idbSet(k,v){const db=await idbOpen();return new Promise((res,rej)=>{
+  const tx=db.transaction('kv','readwrite');tx.objectStore('kv').put(v,k);
+  tx.oncomplete=res;tx.onerror=()=>rej(tx.error);});}
+async function idbGet(k){const db=await idbOpen();return new Promise((res,rej)=>{
+  const tx=db.transaction('kv','readonly');const rq=tx.objectStore('kv').get(k);
+  rq.onsuccess=()=>res(rq.result);rq.onerror=()=>rej(rq.error);});}
 
-/* ================= Kolon tanıma ================= */
+/* ================= Supabase (isteğe bağlı bulut) ================= */
+const CFG_LS='sevkiyat_cloud_cfg';
+let CFG={url:'',key:'',table:'sevkiyat'};
+function loadCfg(){try{const o=JSON.parse(localStorage.getItem(CFG_LS));if(o)CFG={...CFG,...o};}catch(e){}}
+function saveCfg(){localStorage.setItem(CFG_LS,JSON.stringify(CFG));}
+const hasCloud=()=>CFG.url&&CFG.key;
+const base=()=>CFG.url.replace(/\/+$/,'');
+function cloudHeaders(extra={}){return{'apikey':CFG.key,'Authorization':'Bearer '+CFG.key,'Content-Type':'application/json',...extra};}
+const toDb=r=>({kayit_key:keyOf(r),musteri:r.musteri,bolum:r.bolum,kategori:r.kategori||'',tip:r.tip,
+  adet:r.adet||0,tarih:r.tarih?isoDay(r.tarih):null,tarih_str:r.tarihStr||'',
+  parsiyel_m3:r.parsiyelM3||0,toplam_m3:r.toplamM3||0,m3:r.m3||0,yil:r.yil||null,hafta:r.hafta||null,gun:r.gun||''});
+const fromDb=x=>hydrate({musteri:x.musteri,bolum:x.bolum,kategori:x.kategori||'',tip:x.tip||'Bilinmiyor',
+  adet:+x.adet||0,tarih:x.tarih,parsiyelM3:+x.parsiyel_m3||0,toplamM3:+x.toplam_m3||0,m3:+x.m3||0});
+
+async function cloudTest(){
+  const r=await fetch(`${base()}/rest/v1/${CFG.table}?select=kayit_key&limit=1`,{headers:cloudHeaders()});
+  if(!r.ok)throw new Error('HTTP '+r.status+' — tablo/anahtar/URL kontrol edin');
+}
+async function cloudLoadAll(){
+  let all=[],offset=0;const page=1000;
+  while(true){
+    const r=await fetch(`${base()}/rest/v1/${CFG.table}?select=*&limit=${page}&offset=${offset}`,{headers:cloudHeaders()});
+    if(!r.ok)throw new Error('Okuma hatası HTTP '+r.status);
+    const rows=await r.json();all=all.concat(rows);
+    if(rows.length<page)break;offset+=page;
+  }
+  return all.map(fromDb);
+}
+async function cloudSaveAll(rows){
+  const del=await fetch(`${base()}/rest/v1/${CFG.table}?kayit_key=not.is.null`,{method:'DELETE',headers:cloudHeaders({'Prefer':'return=minimal'})});
+  if(!del.ok)throw new Error('Temizleme hatası HTTP '+del.status);
+  for(let i=0;i<rows.length;i+=500){
+    const r=await fetch(`${base()}/rest/v1/${CFG.table}`,
+      {method:'POST',headers:cloudHeaders({'Prefer':'resolution=merge-duplicates,return=minimal'}),
+       body:JSON.stringify(rows.slice(i,i+500).map(toDb))});
+    if(!r.ok)throw new Error('Yazma hatası HTTP '+r.status);
+  }
+}
+
+/* ================= Kaydet / Yükle ================= */
+let SAVING=false;
+async function saveAll(){
+  if(SAVING)return;SAVING=true;setPill('saving');
+  try{
+    await idbSet('rows',DATA);
+    if(hasCloud()){await cloudSaveAll(DATA);setPill('cloud');}
+    else setPill('local');
+  }catch(e){setPill('err',e.message);toast('Kaydetme hatası: '+e.message,'error');}
+  SAVING=false;
+}
+async function initStorage(){
+  loadCfg();
+  try{const o=JSON.parse(localStorage.getItem('sevkiyat_dashboard_v1'));
+    if(o?.rows?.length&&!await idbGet('rows')){DATA=o.rows.map(hydrate);await idbSet('rows',DATA);localStorage.removeItem('sevkiyat_dashboard_v1');}
+  }catch(e){}
+  if(hasCloud()){
+    setPill('saving');
+    try{
+      const rows=await cloudLoadAll();
+      if(rows.length)DATA=rows;else if(DATA.length)await cloudSaveAll(DATA);
+      setPill('cloud');
+    }catch(e){setPill('err',e.message);if(!DATA.length)DATA=(await idbGet('rows'))||[];}
+  }else{DATA=(await idbGet('rows'))||[];setPill('local');}
+  DATA=DATA.map(hydrate);
+}
+function setPill(mode,extra){
+  const p=$('syncPill');
+  if(mode==='cloud'){p.className='pill cloud';p.textContent='☁️ Bulut · '+nf0.format(DATA.length)+' kayıt kayıtlı';}
+  else if(mode==='local'){p.className='pill';p.textContent='💾 Bu tarayıcıda · '+nf0.format(DATA.length)+' kayıt';}
+  else if(mode==='saving'){p.className='pill';p.textContent='⏳ kaydediliyor…';}
+  else if(mode==='err'){p.className='pill err';p.textContent='⚠️ Kayıt hatası'+(extra?': '+extra.slice(0,60):'');}
+}
+
+/* ================= Excel okuma ================= */
 const FIELD_DEFS=[
- {key:'musteri',    label:'Müşteri',            req:true, exact:['musteri','musteriadi','musteriismi','customer','firma','cari','cariadi','iskolu']},
- {key:'bolum',      label:'Bölüm',                        exact:['bolum','bolumu','departman','department','dep']},
- {key:'kategori',   label:'Kategori',                     exact:['kategori','category','kat']},
- {key:'sevkiyatTipi',label:'Sevkiyat Tipi',               exact:['sevkiyattipi','sevkiyattipi2','sevkiyatturu','sevkiyatcinsi','tip','tipi','aractipi','konteynirtipi']},
- {key:'adet',       label:'Adet (araç sayısı)',           exact:['adet','aracadet','miktar','quantity','qty','sayi']},
- {key:'tarih',      label:'Tarih',                        exact:['tarih','yuklemetarihi','sevkiyattarihi','date']},
- {key:'parsiyelM3', label:'Parsiyel m³',                  exact:['parsiyelm3','parsiyel','parsiyelhacim']},
- {key:'toplamM3',   label:'Toplam Yüklenen m³',           exact:['toplamyuklenenm3','yuklenenm3','toplamm3','m3','hacim','toplamhacim','yuklenenhacim','cbm']}
+ {key:'musteri',label:'Müşteri',req:true,exact:['musteri','musteriadi','musteriismi','customer','firma','cari','cariadi','iskolu']},
+ {key:'bolum',label:'Bölüm',exact:['bolum','bolumu','departman','department','dep']},
+ {key:'kategori',label:'Kategori',exact:['kategori','category','kat']},
+ {key:'sevkiyatTipi',label:'Sevkiyat Tipi',exact:['sevkiyattipi','sevkiyatturu','sevkiyatcinsi','tip','tipi','aractipi','konteynirtipi']},
+ {key:'adet',label:'Adet (araç sayısı)',exact:['adet','aracadet','miktar','quantity','qty','sayi']},
+ {key:'tarih',label:'Tarih',exact:['tarih','yuklemetarihi','sevkiyattarihi','date']},
+ {key:'parsiyelM3',label:'Parsiyel m³',exact:['parsiyelm3','parsiyel','parsiyelhacim']},
+ {key:'toplamM3',label:'Toplam Yüklenen m³',exact:['toplamyuklenenm3','yuklenenm3','toplamm3','m3','hacim','toplamhacim','yuklenenhacim','cbm']}
 ];
-
 function detectHeader(aoa){
   let best={idx:-1,score:0,cols:{}};
   const limit=Math.min(aoa.length,40);
@@ -234,17 +349,14 @@ function detectHeader(aoa){
     const r=aoa[i]||[];
     if(!r||r.every(c=>c===''||c==null))continue;
     const cols={};let score=0;
-    // 1. tur: birebir eşleşme (3 puan)
     r.forEach((h,c)=>{const n=norm(h);if(!n)return;
       for(const f of FIELD_DEFS){if(f.exact.includes(n)){cols[c]=f.key;score+=3;break;}}});
-    // 2. tur: kısmi eşleşme — "MÜŞTERİ ADI" → "musteri" (1 puan)
     r.forEach((h,c)=>{const n=norm(h);if(!n||cols[c]!=null)return;
       for(const f of FIELD_DEFS){if(f.exact.some(a=>a.length>=4&&n.includes(a))){cols[c]=f.key;score+=1;break;}}});
     if(Object.keys(cols).length&&score>best.score)best={idx:i,score,cols};
   }
   return best;
 }
-
 function rowsFromSheet(aoa,hi,cols){
   const out=[];
   for(let i=hi+1;i<aoa.length;i++){
@@ -254,24 +366,16 @@ function rowsFromSheet(aoa,hi,cols){
     const tarih=parseDate(get('tarih'));
     if(!musteri&&!tarih)continue;
     const par=toNum(get('parsiyelM3')),top=toNum(get('toplamM3'));
-    out.push({
-      musteri,bolum:String(get('bolum')??'').trim()||'Diğer',
+    out.push(hydrate({musteri,bolum:String(get('bolum')??'').trim()||'Diğer',
       kategori:String(get('kategori')??'').trim(),
       tip:String(get('sevkiyatTipi')??'').trim()||'Bilinmiyor',
-      adet:toNum(get('adet'))||0,
-      tarih,tarihStr:fmtDate(tarih),
-      parsiyelM3:par,toplamM3:top,m3:top||par||0,
-      yil:tarih?tarih.getFullYear():'',
-      hafta:tarih?isoWeek(tarih).week:0,
-      gun:tarih?GUNLER[tarih.getDay()]:''
-    });
+      adet:toNum(get('adet'))||0,tarih,
+      parsiyelM3:par,toplamM3:top,m3:top||par||0}));
   }
   return out;
 }
-
+let WB=null;
 function sheetAoa(name){return XLSX.utils.sheet_to_json(WB.Sheets[name],{header:1,defval:''});}
-
-/* Tüm sayfaları dene, en çok satır üreteni seç */
 function autoParse(){
   let best=null;
   WB.SheetNames.forEach(name=>{
@@ -284,19 +388,16 @@ function autoParse(){
   });
   return best;
 }
-
-/* ================= Yükleme ================= */
-function applyRows(rows,sheetName,fileName){
+async function applyRows(rows,sheetName,fileName){
   if($('merge').checked){
-    const key=r=>[r.musteri,r.bolum,r.tip,r.tarihStr,r.adet].join('|');
-    const map=new Map();DATA.forEach(r=>map.set(key(r),r));rows.forEach(r=>map.set(key(r),r));
+    const map=new Map();DATA.forEach(r=>map.set(keyOf(r),r));rows.forEach(r=>map.set(keyOf(r),r));
     DATA=[...map.values()];
   }else DATA=rows;
-  persist();refreshUI();
-  $('statLine').textContent=`✅ ${fileName} · sayfa "${sheetName}" · ${rows.length} satır işlendi · toplam ${DATA.length} kayıt`;
-  toast(`${rows.length} kayıt yüklendi (sayfa: ${sheetName})`);
+  refreshUI();
+  await saveAll();
+  $('statLine').textContent=`✅ ${fileName} · sayfa "${sheetName}" · ${rows.length} satır işlendi · toplam ${nf0.format(DATA.length)} kayıt`;
+  toast(`${rows.length} kayıt yüklendi ve ${hasCloud()?'buluta':'tarayıcıya'} kaydedildi`);
 }
-
 function handleFile(file){
   if(!file)return;
   const reader=new FileReader();
@@ -307,29 +408,21 @@ function handleFile(file){
         let txt=new TextDecoder('utf-8').decode(e.target.result);
         if(txt.includes('\uFFFD'))txt=new TextDecoder('windows-1254').decode(e.target.result);
         wb=XLSX.read(txt,{type:'string',cellDates:true});
-      }else{
-        wb=XLSX.read(new Uint8Array(e.target.result),{type:'array',cellDates:true});
-      }
+      }else wb=XLSX.read(new Uint8Array(e.target.result),{type:'array',cellDates:true});
       WB=wb;
-      console.log('[Sevkiyat] Sayfalar:',wb.SheetNames);
       const best=autoParse();
-      if(best&&best.rows.length){
-        applyRows(best.rows,best.name,file.name);
-      }else{
-        console.log('[Sevkiyat] Otomatik tanıma başarısız. İlk sayfanın ilk satırları:',sheetAoa(WB.SheetNames[0]).slice(0,8));
-        openMapper(file.name,WB.SheetNames[0]);
-        toast('Otomatik tanıma başarısız — açılan ekranda kolonları elle eşleştirin','error');
-      }
+      if(best&&best.rows.length)applyRows(best.rows,best.name,file.name);
+      else{openMapper(file.name,WB.SheetNames[0]);toast('Otomatik tanıma başarısız — kolonları elle eşleştirin','error');}
     }catch(err){toast('Dosya okunamadı: '+err.message,'error');}
   };
   reader.readAsArrayBuffer(file);
 }
 
-/* ================= Manuel Kolon Eşleştirme ================= */
+/* ================= Manuel eşleştirme ================= */
 let mapDefaultHeadRow={};
 function openMapper(fileName,sheetName){
   if(!WB){toast('Önce bir Excel dosyası seçin','error');return;}
-  $('mapFile').textContent='Dosya: '+(fileName||'son yüklenen dosya')+' — gerekli: Müşteri (*) · önerilen: Tarih, m³, Adet, Bölüm, Sevkiyat Tipi';
+  $('mapFile').textContent='Dosya: '+(fileName||'son yüklenen dosya')+' — Müşteri zorunlu, diğerleri opsiyonel.';
   const sel=$('mapSheet');
   sel.innerHTML=WB.SheetNames.map(n=>`<option ${n===sheetName?'selected':''}>${esc(n)}</option>`).join('');
   mapDefaultHeadRow={};
@@ -342,8 +435,7 @@ function mapperHi(){return Math.max(0,(parseInt($('mapHeadRow').value)||1)-1);}
 function currentCols(){const o={};document.querySelectorAll('#mapFields select').forEach(s=>{if(s.value!=='')o[+s.value]=s.dataset.field;});return o;}
 function buildMapFields(){
   const aoa=sheetAoa($('mapSheet').value);
-  const hi=mapperHi();
-  const headers=aoa[hi]||[];
+  const headers=aoa[mapperHi()]||[];
   const prev=currentCols();
   const auto=detectHeader(aoa).cols;
   const cont=$('mapFields');cont.innerHTML='';
@@ -364,19 +456,16 @@ function buildMapFields(){
 }
 function updateMapPreview(){
   try{
-    const aoa=sheetAoa($('mapSheet').value);
-    const rows=rowsFromSheet(aoa,mapperHi(),currentCols());
+    const rows=rowsFromSheet(sheetAoa($('mapSheet').value),mapperHi(),currentCols());
     const p=$('mapPreview');
     if(rows.length){
-      const sample=rows.slice(0,3).map(r=>`${r.musteri||'?'} · ${r.bolum} · ${r.tip} · ${r.adet} adet · ${r.tarihStr||'tarihsiz'} · ${nf1.format(r.m3)} m³`);
-      p.style.color='';p.innerHTML=`✅ <b>${rows.length}</b> satır algılandı. Örnek: ${sample.map(esc).join(' &nbsp;|&nbsp; ')}`;
-    }else{
-      p.style.color='#dc2626';p.textContent='⚠ Bu eşlemeyle satır bulunamadı — sayfayı, başlık satırı numarasını veya kolonları kontrol edin.';
-    }
+      const s=rows.slice(0,3).map(r=>`${r.musteri||'?'} · ${r.bolum} · ${r.tip} · ${r.adet} adet · ${r.tarihStr||'tarihsiz'} · ${nf1.format(r.m3)} m³`);
+      p.style.color='';p.innerHTML=`✅ <b>${rows.length}</b> satır algılandı. Örnek: ${s.map(esc).join(' &nbsp;|&nbsp; ')}`;
+    }else{p.style.color='#dc2626';p.textContent='⚠ Bu eşlemeyle satır bulunamadı — sayfa, başlık satırı veya kolonları kontrol edin.';}
   }catch(e){}
 }
 
-/* ================= Filtreleme ================= */
+/* ================= Filtre ================= */
 function fillSelect(id,pairs){
   const sel=$(id),cur=sel.value;
   sel.innerHTML=`<option value="all">Tümü</option>`+pairs.map(([v,l])=>`<option value="${esc(v)}">${esc(l)}</option>`).join('');
@@ -443,20 +532,17 @@ function renderCharts(rows){
   charts.dep=new Chart($('chDep'),{type:'bar',data:{labels:deps,datasets:[
     {label:'Araç (Adet)',data:deps.map(d=>gDep.get(d)?.adet||0),backgroundColor:'#2563eb',borderRadius:6,yAxisID:'y'},
     {label:'m³',data:deps.map(d=>gDep.get(d)?.m3||0),type:'line',borderColor:'#059669',backgroundColor:'#059669',tension:.3,yAxisID:'y1'}]},options:dualAxisOpts()});
-
   const tips=uniq(rows.map(r=>r.tip)).sort(),gTip=groupSum(rows,r=>r.tip);
   charts.tip?.destroy();
   charts.tip=new Chart($('chTip'),{type:'doughnut',data:{labels:tips,datasets:[
     {data:tips.map(t=>gTip.get(t)?.adet||0),backgroundColor:PALETTE,borderWidth:2,borderColor:'#fff'}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}});
-
   const daily=[...groupSum(rows.filter(r=>r.tarih),r=>r.tarihStr).entries()]
     .map(([k,o])=>({k,adet:o.adet,m3:o.m3,t:o.ref.tarih.getTime()})).sort((a,b)=>a.t-b.t);
   charts.daily?.destroy();
   charts.daily=new Chart($('chDaily'),{data:{labels:daily.map(x=>x.k),datasets:[
     {type:'bar',label:'Araç',data:daily.map(x=>x.adet),backgroundColor:'#7c3aed',borderRadius:4,yAxisID:'y'},
     {type:'line',label:'m³',data:daily.map(x=>x.m3),borderColor:'#d97706',backgroundColor:'#d97706',tension:.3,yAxisID:'y1'}]},options:dualAxisOpts()});
-
   const weekly=weeklyAgg(rows).sort((a,b)=>a.yil-b.yil||a.hafta-b.hafta);
   charts.week?.destroy();
   charts.week=new Chart($('chWeek'),{type:'bar',data:{labels:weekly.map(w=>`${w.yil}/H${w.hafta}`),datasets:[
@@ -507,13 +593,9 @@ function renderAll(){
   renderKPIs(rows);renderCharts(rows);renderMatrix(rows);renderWeekly(rows);renderDaily(rows);renderTable(rows);
   $('resultCount').textContent=`${nf0.format(rows.length)} kayıt gösteriliyor (ilk 1000 satır tabloda)`;
 }
-function refreshUI(){
-  populateFilters();renderAll();
-  if(lastSaved&&!DATA.length===false){}
-  if(lastSaved)$('statLine').textContent=$('statLine').textContent.startsWith('✅')?$('statLine').textContent:`📦 ${nf0.format(DATA.length)} kayıt yüklü · Son güncelleme: ${new Date(lastSaved).toLocaleString('tr-TR')}`;
-}
+function refreshUI(){populateFilters();renderAll();setPill(hasCloud()?'cloud':'local');}
 
-/* ================= Dışa Aktarım ================= */
+/* ================= Dışa aktarım ================= */
 function downloadTemplate(){
   const head=['MÜŞTERİ','BÖLÜM','KATEGORİ','SEVKİYAT TİPİ','ADET','TARİH','PARSİYEL m3','TOPLAM YÜKLENEN m³','YIL','HAFTANIN GÜNÜ'];
   const ws=XLSX.utils.aoa_to_sheet([head,['ÖRNEK MÜŞTERİ A.Ş.','EXPORT-1','PLANLI','40 HC',2,'15.01.2025','',140,'',''],
@@ -527,13 +609,13 @@ function exportReports(){
   if(!rows.length){toast('Dışa aktarılacak veri yok','error');return;}
   const wb=XLSX.utils.book_new();
   const deps=uniq(rows.map(r=>r.bolum)).sort(),tips=uniq(rows.map(r=>r.tip)).sort();
-  const vAoa=[['MÜŞTERİ','BÖLÜM','KATEGORİ','SEVKİYAT TİPİ','ADET','TARİH','PARSİYEL m3','TOPLAM YÜKLENEN m³','YIL','HAFTANIN GÜNÜ'],
-    ...rows.map(r=>[r.musteri,r.bolum,r.kategori,r.tip,r.adet,r.tarihStr,r.parsiyelM3||'',r.toplamM3||'',r.yil,r.gun])];
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(vAoa),'Veriler');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([
+    ['MÜŞTERİ','BÖLÜM','KATEGORİ','SEVKİYAT TİPİ','ADET','TARİH','PARSİYEL m3','TOPLAM YÜKLENEN m³','YIL','HAFTANIN GÜNÜ'],
+    ...rows.map(r=>[r.musteri,r.bolum,r.kategori,r.tip,r.adet,r.tarihStr,r.parsiyelM3||'',r.toplamM3||'',r.yil,r.gun])]),'Veriler');
   const weekly=weeklyAgg(rows).sort((a,b)=>a.yil-b.yil||a.hafta-b.hafta);
-  const wAoa=[['YIL','HAFTA','İLK GÜN','SON GÜN','ARAÇ','m³',...deps.map(d=>d+' m³')],
-    ...weekly.map(w=>[w.yil,w.hafta,w.min!=null?fmtDate(new Date(w.min)):'',w.max!=null?fmtDate(new Date(w.max)):'',w.adet,+w.m3.toFixed(1),...deps.map(d=>+(w.deps[d]||0).toFixed(1))])];
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(wAoa),'Haftalik');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([
+    ['YIL','HAFTA','İLK GÜN','SON GÜN','ARAÇ','m³',...deps.map(d=>d+' m³')],
+    ...weekly.map(w=>[w.yil,w.hafta,w.min!=null?fmtDate(new Date(w.min)):'',w.max!=null?fmtDate(new Date(w.max)):'',w.adet,+w.m3.toFixed(1),...deps.map(d=>+(w.deps[d]||0).toFixed(1))])]),'Haftalik');
   const daily=[...groupSum(rows.filter(r=>r.tarih),r=>r.tarihStr).entries()]
     .map(([k,o])=>({d:o.ref.tarih,gun:GUNLER[o.ref.tarih.getDay()],adet:o.adet,m3:o.m3})).sort((a,b)=>a.d-b.d);
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['TARİH','GÜN','ARAÇ','m³'],...daily.map(x=>[fmtDate(x.d),x.gun,x.adet,+x.m3.toFixed(1)])]),'Gunluk');
@@ -546,8 +628,8 @@ function exportReports(){
   toast('Excel raporu indirildi (5 sayfa)');
 }
 
-/* ================= Örnek Veri ================= */
-function loadSample(){
+/* ================= Örnek veri ================= */
+async function loadSample(){
   const raw=[['SATO SA','EXPORT-3','PLANLI','40 HC',3,'4.01.2021','','210'],
    ['AEROFOX ADVANCED SLEEPING SYSTEM','EXPORT-2','PLANLI','40 HC',2,'5.01.2021','','140'],
    ['GOOSSENS','EXPORT-2','PLANLI','40 HC',2,'5.01.2021','','140'],
@@ -556,7 +638,6 @@ function loadSample(){
    ['GER EHF','EXPORT-2','PLANLI','40 HC',2,'6.01.2021','','140'],
    ['LUXURY BEDDING COMPANY','EXPORT-3','PLANLI','40 HC',1,'6.01.2021','','70'],
    ['THE BED SHOP','EXPORT-1','PLANLI','40 HC',2,'6.01.2021','','140'],
-   ['AEROFOX ADVANCED SLEEPING SYSTEM','EXPORT-2','PLANLI','40 HC',1,'7.01.2021','','70'],
    ['FRANSA','EXPORT-1','PLANLI','KOMPLE TIR',1,'7.01.2021','','90'],
    ['GER EHF','EXPORT-2','PLANLI','40 HC',1,'7.01.2021','','70'],
    ['HAPPY DREAMS','EXPORT-2','PLANLI','KOMPLE TIR',1,'8.01.2021','','90'],
@@ -570,12 +651,9 @@ function loadSample(){
    ['HARVEY NORMAN TRADING','EXPORT-1','PLANLI','KOMPLE TIR',1,'12.01.2021','','90'],
    ['SLAAPADVIES','EXPORT-2','PLANLI','40 HC',4,'12.01.2021','','280'],
    ['GER EHF','EXPORT-2','PLANLI','40 HC',1,'13.01.2021','','70']];
-  DATA=raw.map(([m,b,k,t,a,tr,pm,tm])=>{
-    const tarih=parseDate(tr);
-    return{musteri:m,bolum:b,kategori:k,tip:t,adet:+a,tarih,tarihStr:fmtDate(tarih),
-      parsiyelM3:+pm||0,toplamM3:+tm||0,m3:+tm||+pm||0,
-      yil:tarih.getFullYear(),hafta:isoWeek(tarih).week,gun:GUNLER[tarih.getDay()]};});
-  persist();refreshUI();toast('Örnek veri yüklendi');
+  DATA=raw.map(([m,b,k,t,a,tr,pm,tm])=>hydrate({musteri:m,bolum:b,kategori:k,tip:t,adet:+a,
+    tarih:parseDate(tr),parsiyelM3:+pm||0,toplamM3:+tm||0,m3:+tm||+pm||0}));
+  refreshUI();await saveAll();toast('Örnek veri yüklendi ve kaydedildi');
 }
 
 /* ================= Toast ================= */
@@ -591,30 +669,57 @@ document.addEventListener('DOMContentLoaded',()=>{
   $('btnTemplate').onclick=downloadTemplate;
   $('btnExport').onclick=exportReports;
   $('btnSample').onclick=loadSample;
-  $('btnMap').onclick=()=>openMapper('',$('mapSheet').value||WB?.SheetNames[0]);
-  $('btnClear').onclick=()=>{if(confirm('Tüm veriler silinecek. Emin misiniz?')){DATA=[];lastSaved=null;localStorage.removeItem(LS_KEY);refreshUI();$('statLine').textContent='Henüz veri yüklenmedi.';toast('Veriler temizlendi');}};
+  $('btnMap').onclick=()=>openMapper('',WB?$('mapSheet').value||WB.SheetNames[0]:null);
+  $('btnClear').onclick=async()=>{if(confirm('Tüm veriler (buluttaysa buluttan da) silinecek. Emin misiniz?')){DATA=[];refreshUI();await saveAll();$('statLine').textContent='Henüz veri yüklenmedi.';toast('Veriler temizlendi');}};
   $('btnReset').onclick=()=>{['fYear','fBolum','fTip','fWeek'].forEach(id=>$(id).value='all');['fFrom','fTo','fSearch'].forEach(id=>$(id).value='');renderAll();};
   ['fYear','fBolum','fTip','fWeek','fFrom','fTo'].forEach(id=>$(id).addEventListener('change',renderAll));
   $('fSearch').addEventListener('input',renderAll);
-  // Mapper olayları
+  // Mapper
   $('mapSheet').addEventListener('change',()=>{$('mapHeadRow').value=Math.max(1,mapDefaultHeadRow[$('mapSheet').value]||1);buildMapFields();});
   $('mapHeadRow').addEventListener('change',buildMapFields);
   $('mapCancel').onclick=()=>$('mapperOv').classList.remove('show');
   $('mapApply').onclick=()=>{
-    const aoa=sheetAoa($('mapSheet').value);
-    const rows=rowsFromSheet(aoa,mapperHi(),currentCols());
+    const rows=rowsFromSheet(sheetAoa($('mapSheet').value),mapperHi(),currentCols());
     if(!rows.length){toast('Bu eşlemeyle hiç satır bulunamadı','error');return;}
-    if(!$('mapSheet').value){toast('Sayfa seçilmedi','error');return;}
     $('mapperOv').classList.remove('show');
     applyRows(rows,$('mapSheet').value,'manuel eşleştirme');
   };
+  // Cloud modal
+  $('btnCloud').onclick=()=>{
+    $('cfgUrl').value=CFG.url;$('cfgKey').value=CFG.key;$('cfgTable').value=CFG.table;
+    $('cfgStatus').textContent=hasCloud()?'✅ Şu anda buluta bağlı: '+CFG.url:'💾 Şu anda yalnızca tarayıcı içi kayıt (IndexedDB) kullanılıyor.';
+    $('cloudOv').classList.add('show');
+  };
+  $('cfgClose').onclick=()=>$('cloudOv').classList.remove('show');
+  $('cfgConnect').onclick=async()=>{
+    CFG={url:$('cfgUrl').value.trim(),key:$('cfgKey').value.trim(),table:$('cfgTable').value.trim()||'sevkiyat'};
+    $('cfgStatus').textContent='⏳ Bağlantı test ediliyor…';
+    try{
+      await cloudTest();saveCfg();
+      $('cfgStatus').textContent='✅ Bağlantı başarılı. Bulut verileri yükleniyor…';
+      const rows=await cloudLoadAll();
+      if(rows.length)DATA=rows;else if(DATA.length)await cloudSaveAll(DATA);
+      DATA=DATA.map(hydrate);refreshUI();
+      $('cfgStatus').textContent=`✅ Buluta bağlandı — ${nf0.format(DATA.length)} kayıt hazır. Artık veriler sunucuda saklanıyor.`;
+      toast('Bulut bağlantısı kuruldu');
+    }catch(e){$('cfgStatus').textContent='❌ Bağlanamadı: '+e.message;}
+  };
+  $('cfgRefresh').onclick=async()=>{
+    if(!hasCloud()){$('cfgStatus').textContent='⚠ Önce bağlanın.';return;}
+    $('cfgStatus').textContent='⏳ Buluttan okunuyor…';
+    try{DATA=(await cloudLoadAll()).map(hydrate);await idbSet('rows',DATA);refreshUI();
+      $('cfgStatus').textContent='✅ Buluttan yenilendi — '+nf0.format(DATA.length)+' kayıt.';}
+    catch(e){$('cfgStatus').textContent='❌ '+e.message;}
+  };
+  $('cfgDisconnect').onclick=()=>{localStorage.removeItem(CFG_LS);CFG={url:'',key:'',table:'sevkiyat'};
+    setPill('local');$('cfgStatus').textContent='💾 Bağlantı kesildi. Veriler yalnızca bu tarayıcıda tutulacak.';};
   // Dropzone
   const dz=$('dropzone');
   dz.addEventListener('click',()=>$('fileInput').click());
   dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over');});
   dz.addEventListener('dragleave',()=>dz.classList.remove('over'));
   dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');handleFile(e.dataTransfer.files[0]);});
-  if(loadPersisted())refreshUI();
+  initStorage().then(refreshUI);
 });
 </script>
 </body>

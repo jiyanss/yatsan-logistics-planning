@@ -70,7 +70,7 @@ select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
 .zero{color:#cbd5e1}
 .badge{background:#eff6ff;color:var(--primary);padding:2px 9px;border-radius:99px;font-weight:700;font-size:12px}
 .empty{text-align:center;color:var(--muted);padding:22px!important}
-.toast{position:fixed;bottom:22px;right:22px;background:#0f172a;color:#fff;padding:12px 20px;border-radius:10px;font-size:13.5px;box-shadow:0 8px 24px rgba(0,0,0,.3);opacity:0;pointer-events:none;transform:translateY(12px);transition:.25s;z-index:99;max-width:420px}
+.toast{position:fixed;bottom:22px;right:22px;background:#0f172a;color:#fff;padding:12px 20px;border-radius:10px;font-size:13.5px;box-shadow:0 8px 24px rgba(0,0,0,.3);opacity:0;pointer-events:none;transform:translateY(12px);transition:.25s;z-index:99;max-width:480px}
 .toast.show{opacity:1;transform:none}
 .toast.error{background:var(--red)}
 .modal-ov{position:fixed;inset:0;background:rgba(15,23,42,.55);display:none;align-items:center;justify-content:center;z-index:80;padding:16px}
@@ -79,8 +79,7 @@ select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
 .modal h3{font-size:16px;margin-bottom:4px}
 .map-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin:12px 0}
 .map-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
-#mapPreview{padding:10px 12px;background:#f8fafc;border:1px solid var(--border);border-radius:8px;font-size:12.5px;line-height:1.5}
-#cfgStatus{padding:10px 12px;background:#f8fafc;border:1px solid var(--border);border-radius:8px;font-size:12.5px;line-height:1.5}
+#mapPreview,#cfgStatus{padding:10px 12px;background:#f8fafc;border:1px solid var(--border);border-radius:8px;font-size:12.5px;line-height:1.5}
 </style>
 </head>
 <body>
@@ -178,7 +177,7 @@ select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
 <div class="modal-ov" id="cloudOv">
   <div class="modal" style="max-width:640px">
     <h3>☁️ Merkezi Veritabanı (Supabase)</h3>
-    <p class="hint">Bağlanırsanız veriler sunucuda saklanır: sayfa yenilemede silinmez, hangi cihazdan girerseniz aynı veriyi görürsünüz, ekipçe ortak kullanılır. Bağlanmazsanız veriler yalnızca bu tarayıcıda (IndexedDB) tutulur.<br>Kurulum: supabase.com → ücretsiz proje → SQL Editor'e panelden SQL'i çalıştır → Settings→API'den URL ve Key kopyala.</p>
+    <p class="hint">Bağlanırsanız veriler sunucuda saklanır: sayfa yenilemede silinmez, hangi cihazdan girerseniz aynı veriyi görürsünüz. Bağlanmazsanız veriler yalnızca bu tarayıcıda (IndexedDB) tutulur.</p>
     <div class="map-grid">
       <div class="field"><label>Project URL</label><input type="text" id="cfgUrl" placeholder="https://xxxxx.supabase.co"></div>
       <div class="field"><label>Anon Public Key</label><input type="text" id="cfgKey" placeholder="eyJhbGciOi..."></div>
@@ -208,7 +207,10 @@ const uniq=a=>[...new Set(a)];
 const pad2=n=>String(n).padStart(2,'0');
 const isoDay=d=>`${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
 function colLetter(i){let s='';i++;while(i>0){const m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=Math.floor((i-1)/26);}return s;}
-
+function uuid(){
+  if(window.crypto&&crypto.randomUUID)return crypto.randomUUID();
+  return 'id-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,10)+Math.random().toString(36).slice(2,6);
+}
 function norm(s){return String(s??'')
   .replace(/İ/g,'i').replace(/I/g,'i').replace(/Ş/g,'s').replace(/Ğ/g,'g').replace(/Ü/g,'u').replace(/Ö/g,'o').replace(/Ç/g,'c')
   .replace(/ı/g,'i').replace(/ş/g,'s').replace(/ğ/g,'g').replace(/ü/g,'u').replace(/ö/g,'o').replace(/ç/g,'c')
@@ -240,8 +242,10 @@ function hydrate(r){
   r.yil=r.tarih?r.tarih.getFullYear():'';
   r.hafta=r.tarih?isoWeek(r.tarih).week:0;
   r.gun=r.tarih?GUNLER[r.tarih.getDay()]:'';
+  if(!r.id)r.id=uuid();
   return r;
 }
+/* İş mantığı anahtarı: sadece "aynı kayıt mı?" karşılaştırması için (birincil anahtar DEĞİL) */
 const keyOf=r=>[r.musteri,r.bolum,r.tip,r.tarihStr,r.adet].join('|');
 
 /* ================= Durum ================= */
@@ -266,34 +270,54 @@ function saveCfg(){localStorage.setItem(CFG_LS,JSON.stringify(CFG));}
 const hasCloud=()=>CFG.url&&CFG.key;
 const base=()=>CFG.url.replace(/\/+$/,'');
 function cloudHeaders(extra={}){return{'apikey':CFG.key,'Authorization':'Bearer '+CFG.key,'Content-Type':'application/json',...extra};}
-const toDb=r=>({kayit_key:keyOf(r),musteri:r.musteri,bolum:r.bolum,kategori:r.kategori||'',tip:r.tip,
+async function readErr(r,what){
+  let msg=what+' (HTTP '+r.status+')';
+  try{const j=await r.json();
+    if(j.message)msg+=' — '+j.message;
+    if(j.details)msg+=' · '+j.details;
+    if(j.hint)msg+=' ('+j.hint+')';
+  }catch(e){}
+  return new Error(msg);
+}
+const toDb=r=>({kayit_key:r.id||uuid(),musteri:r.musteri,bolum:r.bolum,kategori:r.kategori||'',tip:r.tip,
   adet:r.adet||0,tarih:r.tarih?isoDay(r.tarih):null,tarih_str:r.tarihStr||'',
   parsiyel_m3:r.parsiyelM3||0,toplam_m3:r.toplamM3||0,m3:r.m3||0,yil:r.yil||null,hafta:r.hafta||null,gun:r.gun||''});
-const fromDb=x=>hydrate({musteri:x.musteri,bolum:x.bolum,kategori:x.kategori||'',tip:x.tip||'Bilinmiyor',
+const fromDb=x=>hydrate({id:x.kayit_key,musteri:x.musteri,bolum:x.bolum,kategori:x.kategori||'',tip:x.tip||'Bilinmiyor',
   adet:+x.adet||0,tarih:x.tarih,parsiyelM3:+x.parsiyel_m3||0,toplamM3:+x.toplam_m3||0,m3:+x.m3||0});
 
 async function cloudTest(){
   const r=await fetch(`${base()}/rest/v1/${CFG.table}?select=kayit_key&limit=1`,{headers:cloudHeaders()});
-  if(!r.ok)throw new Error('HTTP '+r.status+' — tablo/anahtar/URL kontrol edin');
+  if(!r.ok)throw await readErr(r,'Bağlantı testi başarısız');
 }
 async function cloudLoadAll(){
   let all=[],offset=0;const page=1000;
   while(true){
     const r=await fetch(`${base()}/rest/v1/${CFG.table}?select=*&limit=${page}&offset=${offset}`,{headers:cloudHeaders()});
-    if(!r.ok)throw new Error('Okuma hatası HTTP '+r.status);
+    if(!r.ok)throw await readErr(r,'Okuma hatası');
     const rows=await r.json();all=all.concat(rows);
     if(rows.length<page)break;offset+=page;
   }
   return all.map(fromDb);
 }
 async function cloudSaveAll(rows){
-  const del=await fetch(`${base()}/rest/v1/${CFG.table}?kayit_key=not.is.null`,{method:'DELETE',headers:cloudHeaders({'Prefer':'return=minimal'})});
-  if(!del.ok)throw new Error('Temizleme hatası HTTP '+del.status);
-  for(let i=0;i<rows.length;i+=500){
+  /* 1) Tümünü sil */
+  const del=await fetch(`${base()}/rest/v1/${CFG.table}?kayit_key=not.is.null`,
+    {method:'DELETE',headers:cloudHeaders({'Prefer':'return=minimal'})});
+  if(!del.ok)throw await readErr(del,'Temizleme hatası');
+  /* 2) Kimlik çakışmasına karşı garanti: id'leri tekilleştir */
+  const seen=new Set();
+  const payload=rows.map(r=>{
+    let id=r.id;
+    if(!id||seen.has(id)){do{id=uuid();}while(seen.has(id));}
+    seen.add(id);
+    return toDb({...r,id});
+  });
+  /* 3) 200'lük paketlerle yaz */
+  for(let i=0;i<payload.length;i+=200){
     const r=await fetch(`${base()}/rest/v1/${CFG.table}`,
       {method:'POST',headers:cloudHeaders({'Prefer':'resolution=merge-duplicates,return=minimal'}),
-       body:JSON.stringify(rows.slice(i,i+500).map(toDb))});
-    if(!r.ok)throw new Error('Yazma hatası HTTP '+r.status);
+       body:JSON.stringify(payload.slice(i,i+200))});
+    if(!r.ok)throw await readErr(r,'Yazma hatası');
   }
 }
 
@@ -305,30 +329,33 @@ async function saveAll(){
     await idbSet('rows',DATA);
     if(hasCloud()){await cloudSaveAll(DATA);setPill('cloud');}
     else setPill('local');
-  }catch(e){setPill('err',e.message);toast('Kaydetme hatası: '+e.message,'error');}
+  }catch(e){setPill('err');toast('Kaydetme hatası: '+e.message,'error');}
   SAVING=false;
 }
 async function initStorage(){
   loadCfg();
   try{const o=JSON.parse(localStorage.getItem('sevkiyat_dashboard_v1'));
-    if(o?.rows?.length&&!await idbGet('rows')){DATA=o.rows.map(hydrate);await idbSet('rows',DATA);localStorage.removeItem('sevkiyat_dashboard_v1');}
+    if(o?.rows?.length&&!await idbGet('rows')){await idbSet('rows',o.rows.map(hydrate));localStorage.removeItem('sevkiyat_dashboard_v1');}
   }catch(e){}
+  /* Önce yerel veriyi yükle */
+  DATA=((await idbGet('rows'))||[]).map(hydrate);
   if(hasCloud()){
     setPill('saving');
     try{
       const rows=await cloudLoadAll();
-      if(rows.length)DATA=rows;else if(DATA.length)await cloudSaveAll(DATA);
+      if(rows.length)DATA=rows;              /* bulut doluysa bulut esas */
+      else if(DATA.length)await cloudSaveAll(DATA); /* bulut boşsa yereli buluta yaz */
       setPill('cloud');
-    }catch(e){setPill('err',e.message);if(!DATA.length)DATA=(await idbGet('rows'))||[];}
-  }else{DATA=(await idbGet('rows'))||[];setPill('local');}
+    }catch(e){setPill('err');toast('Bulut okunamadı, yerel veri kullanılıyor: '+e.message,'error');}
+  }else setPill('local');
   DATA=DATA.map(hydrate);
 }
 function setPill(mode,extra){
   const p=$('syncPill');
-  if(mode==='cloud'){p.className='pill cloud';p.textContent='☁️ Bulut · '+nf0.format(DATA.length)+' kayıt kayıtlı';}
+  if(mode==='cloud'){p.className='pill cloud';p.textContent='☁️ Bulut · '+nf0.format(DATA.length)+' kayıt';}
   else if(mode==='local'){p.className='pill';p.textContent='💾 Bu tarayıcıda · '+nf0.format(DATA.length)+' kayıt';}
   else if(mode==='saving'){p.className='pill';p.textContent='⏳ kaydediliyor…';}
-  else if(mode==='err'){p.className='pill err';p.textContent='⚠️ Kayıt hatası'+(extra?': '+extra.slice(0,60):'');}
+  else if(mode==='err'){p.className='pill err';p.textContent='⚠️ Kayıt hatası';}
 }
 
 /* ================= Excel okuma ================= */
@@ -389,10 +416,22 @@ function autoParse(){
   return best;
 }
 async function applyRows(rows,sheetName,fileName){
+  /* Gelen satırlara kimlik ata: mevcut kayıtlarla iş anahtarından eşleşenler
+     mevcut kimliğini korur (güncelleme), eşleşmeyenler yeni kimlik alır (ekleme).
+     Aynı anahtara sahip birden fazla satır AYRI kayıt olarak kalır. */
+  const pools=new Map();
+  DATA.forEach(r=>{const k=keyOf(r);if(!pools.has(k))pools.set(k,[]);pools.get(k).push(r.id);});
+  const mapped=rows.map(r=>{
+    const k=keyOf(r),pool=pools.get(k);
+    const id=(pool&&pool.length)?pool.shift():uuid();
+    return{...r,id};
+  });
   if($('merge').checked){
-    const map=new Map();DATA.forEach(r=>map.set(keyOf(r),r));rows.forEach(r=>map.set(keyOf(r),r));
-    DATA=[...map.values()];
-  }else DATA=rows;
+    const consumed=new Set(mapped.map(r=>r.id));
+    DATA=[...DATA.filter(r=>!consumed.has(r.id)),...mapped];
+  }else{
+    DATA=mapped;
+  }
   refreshUI();
   await saveAll();
   $('statLine').textContent=`✅ ${fileName} · sayfa "${sheetName}" · ${rows.length} satır işlendi · toplam ${nf0.format(DATA.length)} kayıt`;
@@ -659,7 +698,7 @@ async function loadSample(){
 /* ================= Toast ================= */
 let toastTimer;
 function toast(msg,type='success'){const t=$('toast');t.textContent=msg;t.className='toast show '+type;
-  clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.className='toast',3500);}
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.className='toast',5000);}
 
 /* ================= Başlat ================= */
 document.addEventListener('DOMContentLoaded',()=>{
@@ -669,7 +708,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   $('btnTemplate').onclick=downloadTemplate;
   $('btnExport').onclick=exportReports;
   $('btnSample').onclick=loadSample;
-  $('btnMap').onclick=()=>openMapper('',WB?$('mapSheet').value||WB.SheetNames[0]:null);
+  $('btnMap').onclick=()=>openMapper('',WB?($('mapSheet').value||WB.SheetNames[0]):null);
   $('btnClear').onclick=async()=>{if(confirm('Tüm veriler (buluttaysa buluttan da) silinecek. Emin misiniz?')){DATA=[];refreshUI();await saveAll();$('statLine').textContent='Henüz veri yüklenmedi.';toast('Veriler temizlendi');}};
   $('btnReset').onclick=()=>{['fYear','fBolum','fTip','fWeek'].forEach(id=>$(id).value='all');['fFrom','fTo','fSearch'].forEach(id=>$(id).value='');renderAll();};
   ['fYear','fBolum','fTip','fWeek','fFrom','fTo'].forEach(id=>$(id).addEventListener('change',renderAll));
@@ -700,12 +739,13 @@ document.addEventListener('DOMContentLoaded',()=>{
       const rows=await cloudLoadAll();
       if(rows.length)DATA=rows;else if(DATA.length)await cloudSaveAll(DATA);
       DATA=DATA.map(hydrate);refreshUI();
-      $('cfgStatus').textContent=`✅ Buluta bağlandı — ${nf0.format(DATA.length)} kayıt hazır. Artık veriler sunucuda saklanıyor.`;
+      $('cfgStatus').textContent=`✅ Buluta bağlandı — ${nf0.format(DATA.length)} kayıt hazır.`;
       toast('Bulut bağlantısı kuruldu');
-    }catch(e){$('cfgStatus').textContent='❌ Bağlanamadı: '+e.message;}
+    }catch(e){$('cfgStatus').textContent='❌ '+e.message;}
   };
   $('cfgRefresh').onclick=async()=>{
     if(!hasCloud()){$('cfgStatus').textContent='⚠ Önce bağlanın.';return;}
+    if(!confirm('Buluttaki veriler yerel verinin üzerine yazılacak. Emin misiniz?'))return;
     $('cfgStatus').textContent='⏳ Buluttan okunuyor…';
     try{DATA=(await cloudLoadAll()).map(hydrate);await idbSet('rows',DATA);refreshUI();
       $('cfgStatus').textContent='✅ Buluttan yenilendi — '+nf0.format(DATA.length)+' kayıt.';}

@@ -33,6 +33,10 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 .btn-danger:hover{background:rgba(220,38,38,.35)}
 .btn-outline{background:#fff;border:1px solid var(--border);color:var(--text)}
 .btn-outline:hover{border-color:var(--primary);color:var(--primary)}
+.btn-sm{padding:5px 10px;font-size:12px}
+.tabbar{background:#fff;border-bottom:1px solid var(--border);position:sticky;top:63px;z-index:40;display:flex;gap:4px;padding:0 20px;overflow-x:auto}
+.tabbar button{border:none;background:none;padding:13px 16px;font-size:13.5px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;font-family:inherit}
+.tabbar button.on{color:var(--primary);border-bottom-color:var(--primary)}
 .container{max-width:1280px;margin:0 auto;padding:20px;display:flex;flex-direction:column;gap:16px}
 .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px 20px}
 .card h3{font-size:15px;margin-bottom:10px}
@@ -49,6 +53,8 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 select,input{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:#fff;font-family:inherit;color:var(--text)}
 select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
 .filter-foot{display:flex;justify-content:space-between;align-items:center;margin-top:10px;flex-wrap:wrap;gap:8px}
+.presets{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+.presets input{max-width:170px}
 #resultCount{color:var(--muted);font-size:12.5px}
 .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
 .kpi{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 18px;display:flex;align-items:center;gap:14px}
@@ -57,6 +63,7 @@ select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
 .kpi .lbl{font-size:12px;color:var(--muted)}
 .charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 .chart-card .ch-wrap{position:relative;height:290px}
+.chart-card .ch-wrap.tall{height:340px}
 @media(max-width:900px){.charts-grid{grid-template-columns:1fr}}
 .tbl-wrap{overflow-x:auto}
 .tbl-wrap.tall{max-height:520px;overflow-y:auto}
@@ -66,21 +73,48 @@ select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
 .tbl tbody tr:hover{background:#f8fafc}
 .tbl .dep{font-weight:700}
 .tbl .tot,.tbl th.tot{background:#fffbeb}
+.tbl tr.click{cursor:pointer}
 .m3{color:var(--green);font-size:12px}
 .zero{color:#cbd5e1}
 .badge{background:#eff6ff;color:var(--primary);padding:2px 9px;border-radius:99px;font-weight:700;font-size:12px}
+.badge.A{background:#dcfce7;color:#15803d}
+.badge.B{background:#fef9c3;color:#a16207}
+.badge.C{background:#fee2e2;color:#b91c1c}
+.badge.up{background:#dcfce7;color:#15803d}
+.badge.mid{background:#fef9c3;color:#a16207}
+.badge.dn{background:#fee2e2;color:#b91c1c}
 .nodt{background:#fef2f2;color:#dc2626;padding:1px 7px;border-radius:99px;font-size:11px;font-weight:700}
+.up2{color:#15803d;font-weight:700}.dn2{color:#b91c1c;font-weight:700}
 .empty{text-align:center;color:var(--muted);padding:22px!important}
 .toast{position:fixed;bottom:22px;right:22px;background:#0f172a;color:#fff;padding:12px 20px;border-radius:10px;font-size:13.5px;box-shadow:0 8px 24px rgba(0,0,0,.3);opacity:0;pointer-events:none;transform:translateY(12px);transition:.25s;z-index:99;max-width:480px}
 .toast.show{opacity:1;transform:none}
 .toast.error{background:var(--red)}
 .modal-ov{position:fixed;inset:0;background:rgba(15,23,42,.55);display:none;align-items:center;justify-content:center;z-index:80;padding:16px}
 .modal-ov.show{display:flex}
-.modal{background:#fff;border-radius:14px;max-width:880px;width:100%;max-height:90vh;overflow:auto;padding:20px 22px;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.modal{background:#fff;border-radius:14px;max-width:960px;width:100%;max-height:92vh;overflow:auto;padding:20px 22px;box-shadow:0 20px 60px rgba(0,0,0,.35)}
 .modal h3{font-size:16px;margin-bottom:4px}
 .map-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin:12px 0}
 .map-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
 #mapPreview,#cfgStatus,#diagBody{padding:10px 12px;background:#f8fafc;border:1px solid var(--border);border-radius:8px;font-size:12.5px;line-height:1.5}
+.cust-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:12px 0}
+.cust-stats .cs{background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:10px 12px}
+.cust-stats .cs b{display:block;font-size:17px}
+.cust-stats .cs span{font-size:11px;color:var(--muted)}
+/* Isı haritası */
+.hm-wrap{overflow-x:auto;padding-bottom:6px}
+.hm-months,.hm-grid{display:grid;grid-template-columns:repeat(var(--cols),14px);gap:3px;width:max-content}
+.hm-months span{font-size:9.5px;color:var(--muted);height:14px;white-space:nowrap;overflow:visible}
+.hm-cell{width:14px;height:14px;border-radius:3px;background:#eef2f7}
+.hm-cell:hover{outline:2px solid var(--primary)}
+.hm-legend{display:flex;gap:12px;align-items:center;margin-top:10px;font-size:11px;color:var(--muted);flex-wrap:wrap}
+.hm-legend i{width:12px;height:12px;border-radius:3px;display:inline-block;vertical-align:-2px;margin-right:3px}
+.cap-row{display:grid;grid-template-columns:1fr 130px;gap:10px;align-items:center;margin-bottom:6px}
+@media print{
+  .actions,.tabbar,#uploadCard,#fltCard .presets,.modal-ov,.toast{display:none!important}
+  body{background:#fff}.container{max-width:none;padding:0}
+  .card{box-shadow:none;border:1px solid #ddd;page-break-inside:avoid}
+  .topbar{position:static;background:#0f172a!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
 </style>
 </head>
 <body>
@@ -88,7 +122,7 @@ select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
 <header class="topbar">
   <div class="brand">
     <div class="logo">🚚</div>
-    <div><h1>Sevkiyat Yükleme Paneli</h1><span>Bölüm · Sevkiyat Tipi · Hacim (m³) Raporlama</span></div>
+    <div><h1>Sevkiyat Yükleme Paneli</h1><span>Bölüm · Sevkiyat Tipi · Hacim (m³) · Müşteri Analizi</span></div>
   </div>
   <div class="actions">
     <span class="pill" id="syncPill">💾 başlatılıyor…</span>
@@ -96,19 +130,28 @@ select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
     <button class="btn btn-ghost" id="btnTemplate">⬇ Şablon</button>
     <button class="btn btn-ghost" id="btnExport">📊 Rapor İndir</button>
     <button class="btn btn-ghost" id="btnDiag">🔍 Teşhis</button>
+    <button class="btn btn-ghost" id="btnPrint">🖨 Yazdır</button>
     <button class="btn btn-ghost" id="btnCloud">☁️ Bağlantı</button>
     <button class="btn btn-danger" id="btnClear">🗑 Temizle</button>
   </div>
 </header>
 
+<nav class="tabbar" id="tabbar">
+  <button data-tab="genel" class="on">📊 Genel</button>
+  <button data-tab="mus">👥 Müşteriler</button>
+  <button data-tab="aylik">📆 Aylık & Trend</button>
+  <button data-tab="kap">📐 Kapasite</button>
+  <button data-tab="hedef">🎯 Hedefler</button>
+</nav>
+
 <main class="container">
   <input type="file" id="fileInput" accept=".xlsx,.xlsm,.xls,.csv" hidden>
 
-  <section class="card upload-card">
+  <section class="card upload-card" id="uploadCard">
     <div class="dropzone" id="dropzone">
       <div class="big">📥</div>
       <b>Excel dosyasını buraya sürükleyin veya tıklayın</b>
-      <span>Tarihler ham seri sayıdan saat dilimsiz hesaplanır → ±1 gün kayması imkânsız · aynı sayfadaki tekrar satırlar korunur</span>
+      <span>TÜM sayfalar okunur · "HEDEF" sayfası varsa hedefler otomatik içeri alınır</span>
     </div>
     <div class="upload-side">
       <label class="chk"><input type="checkbox" id="merge"> Mevcut verilerle <b>&nbsp;birleştir</b> (kapalıysa yeni yükleme eski veriyi TAMAMEN değiştirir)</label>
@@ -121,7 +164,7 @@ select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
     </div>
   </section>
 
-  <section class="card">
+  <section class="card" id="fltCard">
     <div class="filters-grid">
       <div class="field"><label>Yıl</label><select id="fYear"></select></div>
       <div class="field"><label>Hafta</label><select id="fWeek"></select></div>
@@ -133,7 +176,15 @@ select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
     </div>
     <div class="filter-foot">
       <span id="resultCount"></span>
-      <button class="btn btn-outline" id="btnReset">Filtreleri Sıfırla</button>
+      <button class="btn btn-outline btn-sm" id="btnReset">Filtreleri Sıfırla</button>
+    </div>
+    <div class="presets">
+      <b style="font-size:12px;color:var(--muted)">📌 Kayıtlı Filtreler:</b>
+      <input type="text" id="presetName" placeholder="Set adı (örn. Ocak-EXPORT2)">
+      <button class="btn btn-outline btn-sm" id="btnPresetSave">Kaydet</button>
+      <select id="presetSel" style="max-width:220px"><option value="">— seç —</option></select>
+      <button class="btn btn-outline btn-sm" id="btnPresetApply">Uygula</button>
+      <button class="btn btn-danger btn-sm" id="btnPresetDel">Sil</button>
     </div>
   </section>
 
@@ -144,24 +195,77 @@ select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
     <div class="kpi"><div class="ic" style="background:var(--purple)">📆</div><div><div class="val" id="kDays">0</div><div class="lbl">Yükleme Yapılan Gün</div></div></div>
   </section>
 
-  <section class="charts-grid">
-    <div class="card chart-card"><h3>🏭 Bölümlere Göre Yükleme</h3><div class="ch-wrap"><canvas id="chDep"></canvas></div></div>
-    <div class="card chart-card"><h3>🚛 Sevkiyat Tipi Dağılımı (Araç)</h3><div class="ch-wrap"><canvas id="chTip"></canvas></div></div>
-    <div class="card chart-card"><h3>📈 Günlük Yükleme Trendi</h3><div class="ch-wrap"><canvas id="chDaily"></canvas></div></div>
-    <div class="card chart-card"><h3>📅 Haftalık Özet</h3><div class="ch-wrap"><canvas id="chWeek"></canvas></div></div>
-  </section>
+  <!-- ═══════════ GENEL ═══════════ -->
+  <div class="tabpage" id="tab-genel">
+    <section class="charts-grid">
+      <div class="card chart-card"><h3>🏭 Bölümlere Göre Yükleme</h3><div class="ch-wrap"><canvas id="chDep"></canvas></div></div>
+      <div class="card chart-card"><h3>🚛 Sevkiyat Tipi Dağılımı (Araç)</h3><div class="ch-wrap"><canvas id="chTip"></canvas></div></div>
+      <div class="card chart-card"><h3>📈 Günlük Yükleme Trendi</h3><div class="ch-wrap"><canvas id="chDaily"></canvas></div></div>
+      <div class="card chart-card"><h3>📅 Haftalık Özet + Tahmin (kesikli)</h3><div class="ch-wrap"><canvas id="chWeek"></canvas></div></div>
+    </section>
+    <section class="card"><h3>📌 Bölüm × Sevkiyat Tipi Matrisi</h3><p class="hint">Hücre formatı: araç adeti / m³</p><div class="tbl-wrap" id="tblMatrix"></div></section>
+    <section class="card"><h3>📅 Haftalık Rapor (bölüm bazında m³ kırılımı)</h3><div class="tbl-wrap" id="tblWeekly"></div></section>
+    <section class="card"><h3>🗓 Günlük Rapor</h3><div class="tbl-wrap" id="tblDaily"></div></section>
+    <section class="card"><h3>📋 Tüm Kayıtlar</h3><div class="tbl-wrap tall" id="tblData"></div></section>
+  </div>
 
-  <section class="card"><h3>📌 Bölüm × Sevkiyat Tipi Matrisi</h3><p class="hint">Hücre formatı: araç adeti / m³</p><div class="tbl-wrap" id="tblMatrix"></div></section>
-  <section class="card"><h3>📅 Haftalık Rapor (bölüm bazında m³ kırılımı)</h3><div class="tbl-wrap" id="tblWeekly"></div></section>
-  <section class="card"><h3>🗓 Günlük Rapor</h3><div class="tbl-wrap" id="tblDaily"></div></section>
-  <section class="card"><h3>📋 Tüm Kayıtlar</h3><div class="tbl-wrap tall" id="tblData"></div></section>
+  <!-- ═══════════ MÜŞTERİLER ═══════════ -->
+  <div class="tabpage" id="tab-mus" style="display:none">
+    <section class="card">
+      <h3>👥 Müşteri Analizi + ABC Sınıflandırması</h3>
+      <p class="hint">m³ hacmine göre sıralı. <b>A</b>: toplam hacmin ~%80'i · <b>B</b>: sonraki ~%15'i · <b>C</b>: son ~%5'i. Detay için müşteri adına tıklayın.</p>
+      <div class="tbl-wrap tall" id="tblCust"></div>
+    </section>
+  </div>
+
+  <!-- ═══════════ AYLIK & TREND ═══════════ -->
+  <div class="tabpage" id="tab-aylik" style="display:none">
+    <section class="charts-grid">
+      <div class="card chart-card"><h3>📆 Son 12 Ay (araç / m³)</h3><div class="ch-wrap"><canvas id="chMonthly"></canvas></div></div>
+      <div class="card chart-card"><h3>📊 Bölüm Payı Trendi (m³, yığın)</h3><div class="ch-wrap"><canvas id="chDeptShare"></canvas></div></div>
+    </section>
+    <section class="card"><h3>🔄 Aylık Karşılaştırma (MoM / YoY)</h3><p class="hint">MoM: bir önceki aya göre · YoY: geçen yılın aynı ayına göre değişim %</p><div class="tbl-wrap" id="tblMonthly"></div></section>
+    <section class="card">
+      <h3>🔥 Takvim Isı Haritası <select id="hmYear" style="width:auto;display:inline-block;margin-left:8px;padding:4px 8px;font-size:12.5px"></select></h3>
+      <p class="hint">Her kare bir gün; koyuluk o gün yüklenen m³'ü gösterir. Kareye gelin: detay görünür.</p>
+      <div class="hm-wrap"><div class="hm-months" id="hmMonths"></div><div class="hm-grid" id="hmGrid"></div></div>
+      <div class="hm-legend"><span>Az</span><i style="background:#eef2f7"></i><i style="background:#bbf7d0"></i><i style="background:#4ade80"></i><i style="background:#16a34a"></i><i style="background:#166534"></i><span>Çok</span></div>
+    </section>
+    <section class="card">
+      <h3>📅 Haftanın Günü Analizi</h3>
+      <p class="hint">Ortalama değerler, o güne ait yükleme yapılan gün sayısına bölünerek hesaplanır.</p>
+      <div class="ch-wrap tall"><canvas id="chWd"></canvas></div>
+      <div class="tbl-wrap" style="margin-top:12px" id="tblWd"></div>
+    </section>
+  </div>
+
+  <!-- ═══════════ KAPASİTE ═══════════ -->
+  <div class="tabpage" id="tab-kap" style="display:none">
+    <section class="card">
+      <h3>📐 Kapasite Doluluk Oranı</h3>
+      <p class="hint">Teorik kapasiteleri aşağıdan düzenleyebilirsiniz (tarayıcınıza kaydedilir). Doluluk = gerçekleşen m³ ÷ (araç × kapasite). Düşük doluluk → konsolidasyon fırsatı.</p>
+      <div id="capInputs" style="max-width:460px;margin-bottom:14px"></div>
+      <div class="ch-wrap tall"><canvas id="chCap"></canvas></div>
+      <div class="tbl-wrap" style="margin-top:12px" id="tblCap"></div>
+    </section>
+  </div>
+
+  <!-- ═══════════ HEDEFLER ═══════════ -->
+  <div class="tabpage" id="tab-hedef" style="display:none">
+    <section class="card">
+      <h3>🎯 Hedef vs Gerçekleşen (Aylık)</h3>
+      <p class="hint">Hedefleri "🎯 Düzenle" ile girin veya Excel dosyanıza <b>HEDEF</b> adında sayfa ekleyip (kolonlar: AY · ARAÇ HEDEF · M3 HEDEF, AY formatı: 2026-01) yükleyin. Hedefler bu tarayıcıda saklanır.</p>
+      <div style="margin-bottom:12px"><button class="btn btn-outline" id="btnTargetEdit">🎯 Hedefleri Düzenle</button></div>
+      <div class="tbl-wrap" id="tblTargets"></div>
+    </section>
+  </div>
 </main>
 
 <!-- KOLON EŞLEŞTİRME -->
 <div class="modal-ov" id="mapperOv">
   <div class="modal">
     <h3>⚙️ Kolon Eşleştirme</h3>
-    <p class="hint" id="mapFile">Excel'inizdeki hangi kolon hangi veriyi gösteriyor, buradan seçin.</p>
+    <p class="hint" id="mapFile"></p>
     <div class="map-grid">
       <div class="field"><label>Çalışma Sayfası</label><select id="mapSheet"></select></div>
       <div class="field"><label>Başlık Satırı No</label><input type="number" id="mapHeadRow" min="1" max="100" value="1"></div>
@@ -179,9 +283,38 @@ select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
 <div class="modal-ov" id="diagOv">
   <div class="modal" style="max-width:760px">
     <h3>🔍 Excel Yükleme Teşhisi</h3>
-    <p class="hint">Solda Excel hücresindeki ham değer (tarih hücreleri Excel seri sayısı olarak gösterilir), sağda panele yorumlanan tarih. Dosyayı yükledikten sonra sayfayı yenilemeden kullanın.</p>
+    <p class="hint">Solda Excel hücresindeki ham değer, sağda panele yorumlanan tarih. Dosyayı yükledikten sonra sayfayı yenilemeden kullanın.</p>
     <div id="diagBody"></div>
     <div class="map-actions"><button class="btn btn-outline" id="diagClose">Kapat</button></div>
+  </div>
+</div>
+
+<!-- MÜŞTERİ DETAY -->
+<div class="modal-ov" id="custOv">
+  <div class="modal">
+    <h3 id="custTitle">Müşteri</h3>
+    <div class="cust-stats" id="custStats"></div>
+    <div class="charts-grid">
+      <div class="card chart-card"><h3>📈 Aylık Trend</h3><div class="ch-wrap"><canvas id="chCustM"></canvas></div></div>
+      <div class="card chart-card"><h3>🏭 Bölüm Dağılımı (m³)</h3><div class="ch-wrap"><canvas id="chCustD"></canvas></div></div>
+    </div>
+    <h3 style="margin-top:14px">📋 Son Yüklemeler</h3>
+    <div class="tbl-wrap tall" id="custRows"></div>
+    <div class="map-actions"><button class="btn btn-outline" id="custClose">Kapat</button></div>
+  </div>
+</div>
+
+<!-- HEDEF EDİTÖR -->
+<div class="modal-ov" id="targetOv">
+  <div class="modal" style="max-width:560px">
+    <h3>🎯 Aylık Hedefler</h3>
+    <p class="hint">Yıl seçin, araç ve m³ hedeflerini girin, kaydedin. Boş bırakılan aylar hedefsiz sayılır.</p>
+    <div class="field" style="max-width:180px;margin-bottom:10px"><label>Yıl</label><select id="tgtYear"></select></div>
+    <div class="tbl-wrap" style="max-height:340px;overflow-y:auto"><table class="tbl" id="tgtTable"></table></div>
+    <div class="map-actions">
+      <button class="btn btn-primary" id="tgtSave">💾 Kaydet</button>
+      <button class="btn btn-outline" id="tgtClose">Kapat</button>
+    </div>
   </div>
 </div>
 
@@ -211,13 +344,17 @@ select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
 /* ================= Yardımcılar ================= */
 const $=id=>document.getElementById(id);
 const GUNLER=['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'];
-const PALETTE=['#2563eb','#059669','#d97706','#7c3aed','#dc2626','#0891b2','#65a30d','#db2777','#475569'];
+const AYLAR=['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
+const PALETTE=['#2563eb','#059669','#d97706','#7c3aed','#dc2626','#0891b2','#65a30d','#db2777','#475569','#0d9488'];
 const nf0=new Intl.NumberFormat('tr-TR',{maximumFractionDigits:0});
 const nf1=new Intl.NumberFormat('tr-TR',{maximumFractionDigits:1});
+const pct=v=>(v>=0?'+':'')+nf1.format(v)+'%';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uniq=a=>[...new Set(a)];
 const pad2=n=>String(n).padStart(2,'0');
 const isoDay=d=>`${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+const ymOf=d=>`${d.getFullYear()}-${pad2(d.getMonth()+1)}`;
+const ymLabel=ym=>{const[y,m]=ym.split('-');return AYLAR[+m-1]+' '+y;};
 function colLetter(i){let s='';i++;while(i>0){const m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=Math.floor((i-1)/26);}return s;}
 function uuid(){
   if(window.crypto&&crypto.randomUUID)return crypto.randomUUID();
@@ -234,15 +371,10 @@ function asciiLower(s){return String(s??'')
   .toLowerCase();}
 function toNum(v){if(v===''||v==null)return 0;const n=parseFloat(String(v).replace(',','.'));return isNaN(n)?0:n;}
 
-/* ================= Tarih çözümleme — SAAT DİLİMSİZ =================
-   Excel tarihleri sayısal seri değerdir (1899-12-30'dan itibaren gün sayısı).
-   Dosyayı cellDates:false + raw:true okuduğumuz için tarih hücreleri HAM SAYI
-   olarak gelir ve aşağıda SAF TAKVİM MATEMATİĞİYLE (parse_date_code) çevrilir.
-   Saat dilimi hiçbir adımda devrede olmadığı için ±1 gün kayması mümkün değildir. */
+/* ================= Tarih çözümleme — SAAT DİLİMSİZ ================= */
 const MONTHS_TR={ocak:1,subat:2,mart:3,nisan:4,mayis:5,haziran:6,temmuz:7,agustos:8,eylul:9,ekim:10,kasim:11,aralik:12};
 function mkDate(y,mo,d){if(mo<1||mo>12||d<1||d>31)return null;const dt=new Date(y,mo-1,d);return isNaN(dt)?null:dt;}
 function serialToParts(v){const d=XLSX.SSF.parse_date_code(v);return d?{y:d.y,mo:d.m,d:d.d}:null;}
-/* Yalnızca son çare metinler için; UTC-gece-yarısı kayması normalleştirilir */
 function normalizeDate(d){
   if(isNaN(d))return null;
   const lMid=d.getHours()===0&&d.getMinutes()===0;
@@ -252,7 +384,6 @@ function normalizeDate(d){
 }
 function parseDate(v){
   if(v==null||v==='')return null;
-  /* 1) Ham Excel seri sayısı → saf takvim matematiği (ANA YOL) */
   if(typeof v==='number'){
     if(v>20000&&v<80000){const p=serialToParts(v);return p?new Date(p.y,p.mo-1,p.d):null;}
     return null;
@@ -260,10 +391,9 @@ function parseDate(v){
   if(v instanceof Date)return normalizeDate(v);
   const s=String(v).trim();
   if(!s)return null;
-  /* 2) Metin tarihler */
-  let m=s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/);           /* 2021-01-04 */
+  let m=s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/);
   if(m)return mkDate(+m[1],+m[2],+m[3]);
-  m=s.match(/^(\d{1,2})[.\-\/](\d{1,2})[.\-\/](\d{2,4})/);           /* 04.01.2021 */
+  m=s.match(/^(\d{1,2})[.\-\/](\d{1,2})[.\-\/](\d{2,4})/);
   if(m){
     let a=+m[1],b=+m[2],y=+m[3];if(y<100)y+=2000;
     let d,mo;
@@ -272,7 +402,7 @@ function parseDate(v){
     else{d=a;mo=b;}
     return mkDate(y,mo,d);
   }
-  const tr=asciiLower(s);                                            /* "4 Ocak 2021" */
+  const tr=asciiLower(s);
   m=tr.match(/^(\d{1,2})\s+([a-zçğıöşü]+)\s+(\d{2,4})/);
   if(m&&MONTHS_TR[m[2]]){let y=+m[3];if(y<100)y+=2000;return mkDate(y,MONTHS_TR[m[2]],+m[1]);}
   const n=parseFloat(s.replace(',','.'));
@@ -300,7 +430,12 @@ function hydrate(r){
 const keyOf=r=>[r.musteri,r.bolum,r.tip,r.tarihStr,r.adet].join('|');
 
 /* ================= Durum ================= */
-let DATA=[],charts={};
+let DATA=[],charts={},TAB='genel',HM_YEAR=null,WB=null;
+let TARGETS={};
+const CAP_DEF={'40 HC':68,'KOMPLE TIR':90};
+let CAPS={...CAP_DEF};
+let PRESETS=[];
+function killChart(k){if(charts[k]){charts[k].destroy();delete charts[k];}}
 
 /* ================= IndexedDB ================= */
 function idbOpen(){return new Promise((res,rej)=>{const r=indexedDB.open('sevkiyat_db',1);
@@ -381,6 +516,9 @@ async function saveAll(){
 }
 async function initStorage(){
   loadCfg();
+  try{CAPS={...CAP_DEF,...JSON.parse(localStorage.getItem('sevkiyat_caps')||'{}')};}catch(e){}
+  try{PRESETS=JSON.parse(localStorage.getItem('sevkiyat_presets')||'[]');}catch(e){PRESETS=[];}
+  try{const t=await idbGet('targets');if(t)TARGETS=t;}catch(e){}
   try{const o=JSON.parse(localStorage.getItem('sevkiyat_dashboard_v1'));
     if(o?.rows?.length&&!await idbGet('rows')){await idbSet('rows',o.rows.map(hydrate));localStorage.removeItem('sevkiyat_dashboard_v1');}
   }catch(e){}
@@ -450,17 +588,14 @@ function rowsFromSheet(aoa,hi,cols){
   }
   return out;
 }
-let WB=null;
-/* raw:true → tarih hücreleri Date DEĞİL, ham seri sayı olarak gelir */
 function sheetAoa(name){return XLSX.utils.sheet_to_json(WB.Sheets[name],{header:1,defval:'',raw:true});}
-/* TÜM sayfaları oku ve birleştir. Kopya temizliği SADECE sayfalar ARASI;
-   aynı sayfadaki tekrarlar (aynı güne 2 ayrı yükleme) korunur. */
 function autoParse(){
   const sig=r=>[r.musteri,r.bolum,r.kategori,r.tip,r.adet,r.tarihStr,r.parsiyelM3,r.toplamM3].join('|');
   const perSheet=new Map();
   let combined=[];const used=[];let dups=0;
   WB.SheetNames.forEach(name=>{
     const ws=WB.Sheets[name];if(!ws||!ws['!ref'])return;
+    if(norm(name).includes('hedef'))return; /* hedef sayfası ayrı işlenir */
     const aoa=sheetAoa(name);
     const det=detectHeader(aoa);
     if(det.idx<0)return;
@@ -480,6 +615,40 @@ function autoParse(){
     perSheet.set(name,new Set(rows.map(sig)));
   });
   return{used,rows:combined,dups};
+}
+/* HEDEF sayfası içeri alma */
+function importTargetsFromWb(wb){
+  let imported=0;
+  wb.SheetNames.forEach(name=>{
+    if(!norm(name).includes('hedef'))return;
+    const aoa=XLSX.utils.sheet_to_json(wb.Sheets[name],{header:1,defval:'',raw:true});
+    if(!aoa.length)return;
+    let hi=-1,cm=-1,ca=-1,cv=-1;
+    for(let i=0;i<Math.min(aoa.length,20);i++){
+      const r=aoa[i]||[];
+      r.forEach((h,c)=>{const n=norm(h);
+        if(!n)return;
+        if(cm<0&&['ay','donem','month','period'].includes(n))cm=c;
+        if(ca<0&&['arachedef','arac','achedef'].includes(n))ca=c;
+        if(cv<0&&['m3hedef','hedefm3','m3','hacim'].includes(n))cv=c;
+      });
+      if(cm>=0){hi=i;break;}
+    }
+    if(hi<0)return;
+    for(let i=hi+1;i<aoa.length;i++){
+      const r=aoa[i];if(!r||r.every(c=>c===''||c==null))continue;
+      let y=null,mo=null;
+      const raw=String(r[cm]??'').trim();
+      let m=raw.match(/^(\d{4})[-\/.](\d{1,2})$/);
+      if(m){y=+m[1];mo=+m[2];}
+      else{m=raw.match(/^(\d{1,2})[-\/.](\d{4})$/);if(m){mo=+m[1];y=+m[2];}}
+      if(!y||!mo||mo<1||mo>12)continue;
+      const adet=toNum(r[ca]),m3=toNum(r[cv]);
+      if(!adet&&!m3)continue;
+      TARGETS[`${y}-${pad2(mo)}`]={adet,m3};imported++;
+    }
+  });
+  return imported;
 }
 function fileStat(rows){
   const withDate=rows.filter(r=>r.tarih);
@@ -511,7 +680,7 @@ async function applyRows(rows,sheetLabel,fileName){
   $('statLine').innerHTML=`✅ <b>${esc(fileName)}</b> · sayfa(lar): ${esc(sheetLabel)}<br>`+
     `📄 ${nf0.format(rows.length)} satır işlendi · toplam <b>${nf0.format(DATA.length)}</b> kayıt<br>`+
     `📅 Tarih aralığı: <b>${st.range}</b>`+
-    (st.noDate?` · <span style="color:#dc2626">${nf0.format(st.noDate)} satırda tarih okunamadı (⚙️ Kolon Eşleştir ile kontrol edin)</span>`:'');
+    (st.noDate?` · <span style="color:#dc2626">${nf0.format(st.noDate)} satırda tarih okunamadı</span>`:'');
   toast(`${rows.length} kayıt yüklendi · tarih aralığı: ${st.range}`);
 }
 function handleFile(file){
@@ -525,16 +694,16 @@ function handleFile(file){
         if(txt.includes('\uFFFD'))txt=new TextDecoder('windows-1254').decode(e.target.result);
         wb=XLSX.read(txt,{type:'string'});
       }else{
-        /* cellDates YOK → tarih hücreleri Date'e çevrilmez, ham seri sayı kalır.
-           Böylece saat dilimi dönüşümü hiç yapılmaz → ±1 gün kayması imkânsız. */
         wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
       }
       WB=wb;
       console.log('[Sevkiyat] Sayfalar:',WB.SheetNames);
+      const tImp=importTargetsFromWb(wb);
+      if(tImp){idbSet('targets',TARGETS);toast(`🎯 ${tImp} aylık hedef HEDEF sayfasından alındı`);}
       const res=autoParse();
       console.log('[Sevkiyat] Okunan sayfalar:',res.used,'· satır:',res.rows.length,'· sayfalar-arası kopya:',res.dups);
       if(res.rows.length)applyRows(res.rows,res.used.join(', '),file.name+(res.dups?` (${res.dups} sayfalar-arası kopya teke indirildi)`:''));
-      else{openMapper(file.name,WB.SheetNames[0]);toast('Otomatik tanıma başarısız — kolonları elle eşleştirin','error');}
+      else if(!tImp){openMapper(file.name,WB.SheetNames[0]);toast('Otomatik tanıma başarısız — kolonları elle eşleştirin','error');}
     }catch(err){toast('Dosya okunamadı: '+err.message,'error');}
   };
   reader.readAsArrayBuffer(file);
@@ -598,7 +767,7 @@ function rawCellDesc(v){
   return 'Metin → "'+String(v)+'"';
 }
 function runDiag(){
-  if(!WB){toast('Önce bir Excel dosyası yükleyin (yenileme sonrası dosya bellekten silinir)','error');return;}
+  if(!WB){toast('Önce bir Excel dosyası yükleyin','error');return;}
   let html='';
   WB.SheetNames.forEach(name=>{
     const ws=WB.Sheets[name];if(!ws||!ws['!ref'])return;
@@ -630,6 +799,7 @@ function runDiag(){
 }
 
 /* ================= Filtre ================= */
+const FILTER_IDS=['fYear','fWeek','fBolum','fTip','fFrom','fTo'];
 function fillSelect(id,pairs){
   const sel=$(id),cur=sel.value;
   sel.innerHTML=`<option value="all">Tümü</option>`+pairs.map(([v,l])=>`<option value="${esc(v)}">${esc(l)}</option>`).join('');
@@ -658,6 +828,14 @@ function getFiltered(){
     return true;
   });
 }
+/* Kayıtlı filtre setleri */
+function renderPresets(){
+  const sel=$('presetSel');
+  sel.innerHTML=`<option value="">— seç —</option>`+PRESETS.map((p,i)=>`<option value="${i}">${esc(p.name)}</option>`).join('');
+}
+function saveAllPresets(){localStorage.setItem('sevkiyat_presets',JSON.stringify(PRESETS));}
+
+/* ================= Agregasyonlar ================= */
 function groupSum(rows,keyFn){
   const m=new Map();
   rows.forEach(r=>{const k=keyFn(r);const o=m.get(k)||{adet:0,m3:0,ref:r};o.adet+=r.adet;o.m3+=r.m3;m.set(k,o);});
@@ -674,8 +852,27 @@ function weeklyAgg(rows){
   });
   return[...map.values()];
 }
+function monthlyAgg(rows){
+  const map=new Map();
+  rows.filter(r=>r.tarih).forEach(r=>{
+    const k=ymOf(r.tarih);
+    if(!map.has(k))map.set(k,{ym:k,adet:0,m3:0,deps:{}});
+    const o=map.get(k);o.adet+=r.adet;o.m3+=r.m3;
+    o.deps[r.bolum]=(o.deps[r.bolum]||0)+r.m3;
+  });
+  return[...map.values()].sort((a,b)=>a.ym<b.ym?-1:1);
+}
+/* Basit doğrusal regresyon */
+function linreg(ys){
+  const n=ys.length;if(n<2)return x=>ys[n-1]||0;
+  let sx=0,sy=0,sxy=0,sxx=0;
+  ys.forEach((y,x)=>{sx+=x;sy+=y;sxy+=x*y;sxx+=x*x;});
+  const slope=(n*sxy-sx*sy)/(n*sxx-sx*sx||1);
+  const icpt=(sy-slope*sx)/n;
+  return x=>icpt+slope*x;
+}
 
-/* ================= Render ================= */
+/* ================= Render: Genel ================= */
 function renderKPIs(rows){
   const adet=rows.reduce((s,r)=>s+r.adet,0),m3=rows.reduce((s,r)=>s+r.m3,0);
   $('kVehicles').textContent=nf0.format(adet);
@@ -693,26 +890,44 @@ function dualAxisOpts(){
 function renderCharts(rows){
   const dated=rows.filter(r=>r.tarih);
   const deps=uniq(rows.map(r=>r.bolum)).sort(),gDep=groupSum(rows,r=>r.bolum);
-  charts.dep?.destroy();
+  killChart('dep');
   charts.dep=new Chart($('chDep'),{type:'bar',data:{labels:deps,datasets:[
     {label:'Araç (Adet)',data:deps.map(d=>gDep.get(d)?.adet||0),backgroundColor:'#2563eb',borderRadius:6,yAxisID:'y'},
     {label:'m³',data:deps.map(d=>gDep.get(d)?.m3||0),type:'line',borderColor:'#059669',backgroundColor:'#059669',tension:.3,yAxisID:'y1'}]},options:dualAxisOpts()});
   const tips=uniq(rows.map(r=>r.tip)).sort(),gTip=groupSum(rows,r=>r.tip);
-  charts.tip?.destroy();
+  killChart('tip');
   charts.tip=new Chart($('chTip'),{type:'doughnut',data:{labels:tips,datasets:[
     {data:tips.map(t=>gTip.get(t)?.adet||0),backgroundColor:PALETTE,borderWidth:2,borderColor:'#fff'}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}});
   const daily=[...groupSum(dated,r=>r.tarihStr).entries()]
     .map(([k,o])=>({k,adet:o.adet,m3:o.m3,t:o.ref.tarih.getTime()})).sort((a,b)=>a.t-b.t);
-  charts.daily?.destroy();
+  killChart('daily');
   charts.daily=new Chart($('chDaily'),{data:{labels:daily.map(x=>x.k),datasets:[
     {type:'bar',label:'Araç',data:daily.map(x=>x.adet),backgroundColor:'#7c3aed',borderRadius:4,yAxisID:'y'},
     {type:'line',label:'m³',data:daily.map(x=>x.m3),borderColor:'#d97706',backgroundColor:'#d97706',tension:.3,yAxisID:'y1'}]},options:dualAxisOpts()});
+  /* Haftalık + 4 haftalık tahmin */
   const weekly=weeklyAgg(dated).sort((a,b)=>a.yil-b.yil||a.hafta-b.hafta);
-  charts.week?.destroy();
-  charts.week=new Chart($('chWeek'),{type:'bar',data:{labels:weekly.map(w=>`${w.yil}/H${w.hafta}`),datasets:[
+  const FC=4;
+  let fLabels=[],fV=[],fM=[];
+  if(weekly.length>=4){
+    const wV=weekly.map(w=>w.adet),wM=weekly.map(w=>w.m3);
+    const tailV=wV.slice(-8),tailM=wM.slice(-8);
+    const regV=linreg(tailV),regM=linreg(tailM);
+    const nV=tailV.map((_,i)=>i),n=tailV.length;
+    const regV2=linreg(tailV),regM2=linreg(tailM);
+    let lastDate=new Date(Math.max(...dated.map(r=>r.tarih.getTime())));
+    fV=Array(weekly.length).fill(null).concat(Array.from({length:FC},(_,i)=>Math.max(0,Math.round(regV2(n+i)))));
+    fM=Array(weekly.length).fill(null).concat(Array.from({length:FC},(_,i)=>Math.max(0,Math.round(regM2(n+i)))));
+    fLabels=weekly.map(w=>`${w.yil}/H${w.hafta}`).concat(Array.from({length:FC},(_,i)=>{
+      const d=new Date(lastDate.getTime()+(i+1)*7*864e5);
+      const iw=isoWeek(d);return`${iw.year}/H${iw.week}*`;}));
+  }
+  killChart('week');
+  charts.week=new Chart($('chWeek'),{data:{labels:fLabels.length?fLabels:weekly.map(w=>`${w.yil}/H${w.hafta}`),datasets:[
     {label:'Araç',data:weekly.map(w=>w.adet),backgroundColor:'#0891b2',borderRadius:5,yAxisID:'y'},
-    {label:'m³',data:weekly.map(w=>w.m3),backgroundColor:'#d97706',borderRadius:5,yAxisID:'y1'}]},options:dualAxisOpts()});
+    {label:'m³',data:weekly.map(w=>w.m3),backgroundColor:'#d97706',borderRadius:5,yAxisID:'y1'},
+    {label:'Araç Tahmin',data:fV,type:'line',borderColor:'#0891b2',borderDash:[6,4],borderWidth:2,pointRadius:0,fill:false,yAxisID:'y'},
+    {label:'m³ Tahmin',data:fM,type:'line',borderColor:'#d97706',borderDash:[6,4],borderWidth:2,pointRadius:0,fill:false,yAxisID:'y1'}]},options:dualAxisOpts()});
 }
 function renderMatrix(rows){
   const deps=uniq(rows.map(r=>r.bolum)).sort(),tips=uniq(rows.map(r=>r.tip)).sort(),cell={};
@@ -753,10 +968,309 @@ function renderTable(rows){
   sorted.forEach((r,i)=>{html+=`<tr><td>${i+1}</td><td>${r.tarihStr||'<span class="nodt">tarihsiz</span>'}</td><td>${esc(r.gun||'—')}</td><td>${esc(r.musteri)}</td><td>${esc(r.bolum)}</td><td>${esc(r.kategori)}</td><td>${esc(r.tip)}</td><td>${nf0.format(r.adet)}</td><td><span class="m3">${nf1.format(r.m3)}</span></td></tr>`;});
   $('tblData').innerHTML=html+'</tbody></table>';
 }
-function renderAll(){
+function renderGenel(rows){
+  renderCharts(rows);renderMatrix(rows);renderWeekly(rows);renderDaily(rows);renderTable(rows);
+}
+
+/* ================= Render: Müşteriler ================= */
+function custAgg(rows){
+  const map=new Map();
+  rows.forEach(r=>{
+    if(!map.has(r.musteri))map.set(r.musteri,{name:r.musteri,adet:0,m3:0,loads:0,last:null,deps:{}});
+    const o=map.get(r.musteri);
+    o.adet+=r.adet;o.m3+=r.m3;o.loads++;
+    o.deps[r.bolum]=(o.deps[r.bolum]||0)+r.m3;
+    if(r.tarih&&(!o.last||r.tarih>o.last))o.last=r.tarih;
+  });
+  const list=[...map.values()].sort((a,b)=>b.m3-a.m3);
+  const total=list.reduce((s,c)=>s+c.m3,0)||1;
+  let cum=0;
+  list.forEach(c=>{
+    c.share=c.m3/total*100;
+    cum+=c.share;
+    c.cum=cum;
+    c.cls=cum<=80?'A':(cum<=95?'B':'C');
+  });
+  return list;
+}
+function renderCustomers(rows){
+  const list=custAgg(rows);
+  let html=`<table class="tbl"><thead><tr><th>#</th><th>Müşteri</th><th>Sınıf</th><th>Araç</th><th>m³</th><th>Pay %</th><th>Küm. %</th><th>Yükleme Sayısı</th><th>Son Yükleme</th><th></th></tr></thead><tbody>`;
+  if(!list.length)html+=`<tr><td colspan="10" class="empty">Veri yok</td></tr>`;
+  list.forEach((c,i)=>{
+    html+=`<tr class="click" data-cust="${esc(c.name)}"><td>${i+1}</td><td class="dep">${esc(c.name)}</td>`+
+      `<td><span class="badge ${c.cls}">${c.cls}</span></td><td>${nf0.format(c.adet)}</td><td><span class="m3">${nf1.format(c.m3)}</span></td>`+
+      `<td>${nf1.format(c.share)}</td><td>${nf1.format(c.cum)}</td><td>${c.loads}</td>`+
+      `<td>${c.last?fmtDate(c.last):'—'}</td><td><button class="btn btn-outline btn-sm">Detay</button></td></tr>`;});
+  $('tblCust').innerHTML=html+'</tbody></table>';
+  $('tblCust').querySelectorAll('tr.click').forEach(tr=>{
+    tr.addEventListener('click',()=>openCustomer(tr.dataset.cust,rows));
+  });
+}
+function openCustomer(name,rows){
+  const cRows=rows.filter(r=>r.musteri===name);
+  if(!cRows.length)return;
+  $('custTitle').textContent='👤 '+name;
+  const adet=cRows.reduce((s,r)=>s+r.adet,0),m3=cRows.reduce((s,r)=>s+r.m3,0);
+  const days=uniq(cRows.filter(r=>r.tarih).map(r=>r.tarihStr)).sort();
+  const dts=days.map(s=>{const[a,b,c]=s.split('.').map(Number);return new Date(c,b-1,a).getTime();}).sort((a,b)=>a-b);
+  let avgInt='—';
+  if(dts.length>1)avgInt=nf1.format((dts[dts.length-1]-dts[0])/864e5/(dts.length-1))+' gün';
+  const last=dts.length?fmtDate(new Date(dts[dts.length-1])):'—';
+  const first=dts.length?fmtDate(new Date(dts[0])):'—';
+  const depMap={};cRows.forEach(r=>depMap[r.bolum]=(depMap[r.bolum]||0)+r.m3);
+  const topDep=Object.entries(depMap).sort((a,b)=>b[1]-a[1])[0];
+  $('custStats').innerHTML=`
+    <div class="cs"><b>${nf0.format(adet)}</b><span>Toplam Araç</span></div>
+    <div class="cs"><b>${nf1.format(m3)}</b><span>Toplam m³</span></div>
+    <div class="cs"><b>${cRows.length}</b><span>Yükleme Kaydı</span></div>
+    <div class="cs"><b>${first}</b><span>İlk Yükleme</span></div>
+    <div class="cs"><b>${last}</b><span>Son Yükleme</span></div>
+    <div class="cs"><b>${avgInt}</b><span>Ort. Yükleme Aralığı</span></div>
+    <div class="cs"><b>${topDep?esc(topDep[0]):'—'}</b><span>En Çok Yüklediği Bölüm</span></div>`;
+  const mon=monthlyAgg(cRows);
+  killChart('custM');
+  charts.custM=new Chart($('chCustM'),{data:{labels:mon.map(m=>ymLabel(m.ym)),datasets:[
+    {type:'bar',label:'Araç',data:mon.map(m=>m.adet),backgroundColor:'#2563eb',borderRadius:4,yAxisID:'y'},
+    {type:'line',label:'m³',data:mon.map(m=>m.m3),borderColor:'#059669',backgroundColor:'#059669',tension:.3,yAxisID:'y1'}]},options:dualAxisOpts()});
+  const deps=Object.keys(depMap).sort();
+  killChart('custD');
+  charts.custD=new Chart($('chCustD'),{type:'doughnut',data:{labels:deps,datasets:[
+    {data:deps.map(d=>+depMap[d].toFixed(1)),backgroundColor:PALETTE,borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}});
+  const sorted=[...cRows].sort((a,b)=>(b.tarih?.getTime()||0)-(a.tarih?.getTime()||0)).slice(0,50);
+  let html=`<table class="tbl"><thead><tr><th>Tarih</th><th>Gün</th><th>Bölüm</th><th>Tip</th><th>Adet</th><th>m³</th></tr></thead><tbody>`;
+  sorted.forEach(r=>{html+=`<tr><td>${r.tarihStr||'—'}</td><td>${esc(r.gun||'—')}</td><td>${esc(r.bolum)}</td><td>${esc(r.tip)}</td><td>${nf0.format(r.adet)}</td><td><span class="m3">${nf1.format(r.m3)}</span></td></tr>`;});
+  $('custRows').innerHTML=html+'</tbody></table>';
+  $('custOv').classList.add('show');
+}
+
+/* ================= Render: Aylık & Trend ================= */
+function renderMonthly(rows){
+  const mon=monthlyAgg(rows);
+  const byYm=new Map(mon.map(m=>[m.ym,m]));
+  const desc=[...mon].reverse();
+  let html=`<table class="tbl"><thead><tr><th>Ay</th><th>Araç</th><th>MoM</th><th>YoY</th><th>m³</th><th>MoM</th><th>YoY</th></tr></thead><tbody>`;
+  if(!desc.length)html+=`<tr><td colspan="7" class="empty">Veri yok</td></tr>`;
+  desc.slice(0,24).forEach(m=>{
+    const pm=byYm.get((p=>{const[y,mm]=p.split('-').map(Number);return`${mm===1?y-1:y}-${pad2(mm===1?12:mm-1)}`})(m.ym));
+    const py=byYm.get((p=>{const y=+p.split('-')[0];return`${y-1}${p.slice(4)}`})(m.ym));
+    const momV=pm&&pm.adet?((m.adet-pm.adet)/pm.adet*100):null;
+    const momM=pm&&pm.m3?((m.m3-pm.m3)/pm.m3*100):null;
+    const yoyV=py&&py.adet?((m.adet-py.adet)/py.adet*100):null;
+    const yoyM=py&&py.m3?((m.m3-py.m3)/py.m3*100):null;
+    const cls=v=>v==null?'':(v>=0?'up2':'dn2');
+    html+=`<tr><td class="dep">${ymLabel(m.ym)}</td><td>${nf0.format(m.adet)}</td>`+
+      `<td class="${cls(momV)}">${momV==null?'—':pct(momV)}</td><td class="${cls(yoyV)}">${yoyV==null?'—':pct(yoyV)}</td>`+
+      `<td>${nf1.format(m.m3)}</td>`+
+      `<td class="${cls(momM)}">${momM==null?'—':pct(momM)}</td><td class="${cls(yoyM)}">${yoyM==null?'—':pct(yoyM)}</td></tr>`;});
+  $('tblMonthly').innerHTML=html+'</tbody></table>';
+  const last12=mon.slice(-12);
+  killChart('monthly');
+  charts.monthly=new Chart($('chMonthly'),{data:{labels:last12.map(m=>ymLabel(m.ym)),datasets:[
+    {type:'bar',label:'Araç',data:last12.map(m=>m.adet),backgroundColor:'#2563eb',borderRadius:4,yAxisID:'y'},
+    {type:'line',label:'m³',data:last12.map(m=>m.m3),borderColor:'#d97706',backgroundColor:'#d97706',tension:.3,yAxisID:'y1'}]},options:dualAxisOpts()});
+  const deps=uniq(rows.filter(r=>r.tarih).map(r=>r.bolum)).sort();
+  killChart('deptShare');
+  charts.deptShare=new Chart($('chDeptShare'),{type:'bar',data:{labels:last12.map(m=>ymLabel(m.ym)),
+    datasets:deps.map((d,i)=>({label:d,data:last12.map(m=>+(m.deps[d]||0).toFixed(1)),backgroundColor:PALETTE[i%PALETTE.length]}))},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true,title:{display:true,text:'m³'}}},
+      plugins:{legend:{position:'bottom',labels:{boxWidth:12}}}}});
+}
+function renderHeatmap(rows){
+  const dated=rows.filter(r=>r.tarih);
+  const years=uniq(dated.map(r=>r.tarih.getFullYear())).sort((a,b)=>b-a);
+  const sel=$('hmYear');
+  sel.innerHTML=years.map(y=>`<option value="${y}">${y}</option>`).join('');
+  if(!years.length){$('hmMonths').innerHTML='';$('hmGrid').innerHTML='<span class="hint">Veri yok</span>';$('hmGrid').style.setProperty('--cols',1);$('hmMonths').style.setProperty('--cols',1);return;}
+  if(!HM_YEAR||!years.includes(HM_YEAR))HM_YEAR=years[0];
+  sel.value=HM_YEAR;
+  const dayMap=new Map();
+  dated.forEach(r=>{const k=isoDay(r.tarih);const o=dayMap.get(k)||{m3:0,adet:0};o.m3+=r.m3;o.adet+=r.adet;dayMap.set(k,o);});
+  const year=HM_YEAR;
+  const start=new Date(year,0,1);
+  const offset=(start.getDay()+6)%7;
+  const gridStart=new Date(year,0,1-offset);
+  const weeks=[];
+  let d=new Date(gridStart);
+  while(d.getFullYear()<=year){
+    const col=[];
+    for(let i=0;i<7;i++){
+      col.push(new Date(d));
+      d.setDate(d.getDate()+1);
+    }
+    weeks.push(col);
+    if(weeks.length>60)break;
+  }
+  const maxM3=Math.max(...[...dayMap.values()].map(o=>o.m3),1);
+  const color=m3=>{
+    if(!m3)return'#eef2f7';
+    const q=m3/maxM3;
+    return q<.25?'#bbf7d0':q<.5?'#4ade80':q<.75?'#16a34a':'#166534';
+  };
+  let mg='';
+  weeks.forEach(col=>{
+    col.forEach(dt=>{
+      if(dt.getFullYear()!==year){mg+='<span></span>';return;}
+      const k=isoDay(dt),o=dayMap.get(k);
+      mg+=`<span class="hm-cell" style="background:${color(o?.m3||0)}" title="${fmtDate(dt)} ${GUNLER[dt.getDay()]} · ${o?nf1.format(o.m3)+' m³ · '+nf0.format(o.adet)+' araç':'yükleme yok'}"></span>`;
+    });
+  });
+  $('hmGrid').innerHTML=mg;
+  $('hmGrid').style.setProperty('--cols',weeks.length);
+  let ml='';
+  let lastM=-1;
+  weeks.forEach(col=>{
+    const dt=col[0];
+    if(dt.getFullYear()===year&&dt.getMonth()!==lastM&&dt.getDate()<=14){lastM=dt.getMonth();ml+=`<span>${AYLAR[lastM]}</span>`;}
+    else ml+='<span></span>';
+  });
+  $('hmMonths').innerHTML=ml;
+  $('hmMonths').style.setProperty('--cols',weeks.length);
+}
+function renderWeekday(rows){
+  const dated=rows.filter(r=>r.tarih);
+  const order=[1,2,3,4,5,6,0];
+  const agg={};
+  dated.forEach(r=>{
+    const d=r.tarih.getDay();
+    if(!agg[d])agg[d]={m3:0,adet:0,days:new Set()};
+    agg[d].m3+=r.m3;agg[d].adet+=r.adet;agg[d].days.add(r.tarihStr);
+  });
+  const labels=order.map(d=>GUNLER[d]);
+  const avgM3=order.map(d=>agg[d]?agg[d].m3/agg[d].days.size:0);
+  const avgA=order.map(d=>agg[d]?agg[d].adet/agg[d].days.size:0);
+  killChart('wd');
+  charts.wd=new Chart($('chWd'),{type:'bar',data:{labels,datasets:[
+    {label:'Ort. m³/Gün',data:avgM3.map(v=>+v.toFixed(1)),backgroundColor:'#059669',borderRadius:5,yAxisID:'y'},
+    {label:'Ort. Araç/Gün',data:avgA.map(v=>+v.toFixed(1)),backgroundColor:'#2563eb',borderRadius:5,yAxisID:'y1'}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{y:{beginAtZero:true,title:{display:true,text:'Ort. m³'}},y1:{position:'right',beginAtZero:true,grid:{drawOnChartArea:false},title:{display:true,text:'Ort. Araç'}}},
+      plugins:{legend:{labels:{boxWidth:12}}}}});
+  let html=`<table class="tbl"><thead><tr><th>Gün</th><th>Toplam Araç</th><th>Toplam m³</th><th>Gün Sayısı</th><th>Ort. Araç/Gün</th><th>Ort. m³/Gün</th><th>Pay %</th></tr></thead><tbody>`;
+  const totM3=order.reduce((s,d)=>s+(agg[d]?.m3||0),0)||1;
+  order.forEach(d=>{
+    const a=agg[d];
+    html+=`<tr><td class="dep">${GUNLER[d]}</td><td>${a?nf0.format(a.adet):'—'}</td><td>${a?nf1.format(a.m3):'—'}</td>`+
+      `<td>${a?a.days.size:0}</td><td>${a?nf1.format(a.adet/a.days.size):'—'}</td><td>${a?nf1.format(a.m3/a.days.size):'—'}</td>`+
+      `<td>${a?nf1.format(a.m3/totM3*100):'—'}</td></tr>`;});
+  $('tblWd').innerHTML=html+'</tbody></table>';
+}
+function renderAylik(rows){
+  renderMonthly(rows);renderHeatmap(rows);renderWeekday(rows);
+}
+
+/* ================= Render: Kapasite ================= */
+function saveCaps(){localStorage.setItem('sevkiyat_caps',JSON.stringify(CAPS));}
+function renderCapacity(rows){
+  const tips=uniq(DATA.map(r=>r.tip)).sort();
+  const cont=$('capInputs');
+  if(!cont.dataset.built||cont.dataset.built!==tips.join('|')){
+    cont.innerHTML=tips.map(t=>`<div class="cap-row"><span style="font-size:13px;font-weight:600">${esc(t)}</span><input type="number" min="1" step="1" data-tip="${esc(t)}" value="${CAPS[t]??68}"></div>`).join('');
+    cont.dataset.built=tips.join('|');
+    cont.querySelectorAll('input').forEach(inp=>{
+      inp.addEventListener('change',()=>{
+        CAPS[inp.dataset.tip]=toNum(inp.value)||68;saveCaps();renderCapacity(rows);
+      });
+    });
+  }
+  const cell={};
+  rows.forEach(r=>{const k=r.tip;(cell[k]=cell[k]||{adet:0,m3:0});cell[k].adet+=r.adet;cell[k].m3+=r.m3;});
+  const list=Object.entries(cell).map(([tip,o])=>{
+    const cap=CAPS[tip]??68;
+    const theo=o.adet*cap;
+    return{tip,adet:o.adet,m3:o.m3,cap,theo,util:theo?o.m3/theo*100:0};
+  }).sort((a,b)=>b.m3-a.m3);
+  killChart('cap');
+  charts.cap=new Chart($('chCap'),{type:'bar',data:{labels:list.map(x=>x.tip),datasets:[
+    {label:'Gerçek m³',data:list.map(x=>+x.m3.toFixed(1)),backgroundColor:'#059669',borderRadius:5},
+    {label:'Teorik Kapasite m³',data:list.map(x=>+x.theo.toFixed(1)),backgroundColor:'#cbd5e1',borderRadius:5}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}},
+      scales:{y:{beginAtZero:true,title:{display:true,text:'m³'}}}}});
+  let html=`<table class="tbl"><thead><tr><th>Sevkiyat Tipi</th><th>Kapasite (m³/araç)</th><th>Araç</th><th>Gerçek m³</th><th>Teorik m³</th><th>Doluluk</th><th></th></tr></thead><tbody>`;
+  if(!list.length)html+=`<tr><td colspan="7" class="empty">Veri yok</td></tr>`;
+  list.forEach(x=>{
+    const b=x.util>=85?'up':(x.util>=60?'mid':'dn');
+    html+=`<tr><td class="dep">${esc(x.tip)}</td><td>${x.cap}</td><td>${nf0.format(x.adet)}</td>`+
+      `<td>${nf1.format(x.m3)}</td><td>${nf1.format(x.theo)}</td>`+
+      `<td><b>${nf1.format(x.util)}%</b></td><td><span class="badge ${b}">${x.util>=85?'İyi':(x.util>=60?'Orta':'Düşük')}</span></td></tr>`;});
+  $('tblCap').innerHTML=html+'</tbody></table>';
+}
+
+/* ================= Render: Hedefler ================= */
+function renderTargets(rows){
+  const mon=monthlyAgg(rows);
+  const byYm=new Map(mon.map(m=>[m.ym,m]));
+  const months=uniq([...Object.keys(TARGETS),...mon.map(m=>m.ym)]).sort().reverse();
+  let html=`<table class="tbl"><thead><tr><th>Ay</th><th>Araç Hedef</th><th>Gerçek</th><th>%</th><th>m³ Hedef</th><th>Gerçek</th><th>%</th><th>Durum</th></tr></thead><tbody>`;
+  if(!months.length)html+=`<tr><td colspan="8" class="empty">Henüz hedef girilmedi. "🎯 Hedefleri Düzenle" ile başlayın veya Excel'e HEDEF sayfası ekleyin.</td></tr>`;
+  months.forEach(ym=>{
+    const t=TARGETS[ym]||{},a=byYm.get(ym)||{adet:0,m3:0};
+    const pV=t.adet?a.adet/t.adet*100:null;
+    const pM=t.m3?a.m3/t.m3*100:null;
+    const worst=[pV,pM].filter(v=>v!=null).length?Math.min(...[pV,pM].filter(v=>v!=null)):null;
+    let st='<span class="zero">—</span>';
+    if(worst!=null)st=worst>=100?'<span class="badge up">Tuttu</span>':(worst>=80?'<span class="badge mid">Yakın</span>':'<span class="badge dn">Geride</span>');
+    html+=`<tr><td class="dep">${ymLabel(ym)}</td>`+
+      `<td>${t.adet?nf0.format(t.adet):'—'}</td><td>${nf0.format(a.adet)}</td>`+
+      `<td class="${pV==null?'':(pV>=100?'up2':'dn2')}">${pV==null?'—':nf1.format(pV)+'%'}</td>`+
+      `<td>${t.m3?nf1.format(t.m3):'—'}</td><td>${nf1.format(a.m3)}</td>`+
+      `<td class="${pM==null?'':(pM>=100?'up2':'dn2')}">${pM==null?'—':nf1.format(pM)+'%'}</td>`+
+      `<td>${st}</td></tr>`;});
+  $('tblTargets').innerHTML=html+'</tbody></table>';
+}
+function openTargetEditor(){
+  const years=uniq([...DATA.map(r=>r.yil).filter(Boolean),new Date().getFullYear()]).sort((a,b)=>b-a);
+  const sel=$('tgtYear');
+  sel.innerHTML=years.map(y=>`<option value="${y}">${y}</option>`).join('');
+  buildTgtTable();
+  $('targetOv').classList.add('show');
+}
+function buildTgtTable(){
+  const y=$('tgtYear').value;
+  let html=`<thead><tr><th>Ay</th><th>Araç Hedefi</th><th>m³ Hedefi</th></tr></thead><tbody>`;
+  for(let m=1;m<=12;m++){
+    const ym=`${y}-${pad2(m)}`;
+    const t=TARGETS[ym]||{};
+    html+=`<tr><td class="dep">${ymLabel(ym)}</td>`+
+      `<td><input type="number" min="0" data-ym="${ym}" data-f="adet" value="${t.adet??''}" placeholder="—"></td>`+
+      `<td><input type="number" min="0" data-ym="${ym}" data-f="m3" value="${t.m3??''}" placeholder="—"></td></tr>`;
+  }
+  $('tgtTable').innerHTML=html+'</tbody>';
+}
+async function saveTargetsFromEditor(){
+  document.querySelectorAll('#tgtTable input').forEach(inp=>{
+    const ym=inp.dataset.ym,f=inp.dataset.f,v=toNum(inp.value);
+    if(!TARGETS[ym])TARGETS[ym]={};
+    TARGETS[ym][f]=v;
+    if(!TARGETS[ym].adet&&!TARGETS[ym].m3)delete TARGETS[ym];
+  });
+  await idbSet('targets',TARGETS);
+  $('targetOv').classList.remove('show');
+  renderTab('hedef');
+  toast('Hedefler kaydedildi');
+}
+
+/* ================= Sekmeler ================= */
+function renderTab(tab){
   const rows=getFiltered();
-  renderKPIs(rows);renderCharts(rows);renderMatrix(rows);renderWeekly(rows);renderDaily(rows);renderTable(rows);
-  $('resultCount').textContent=`${nf0.format(rows.length)} kayıt gösteriliyor (tabloda ilk 2000 satır)`;
+  if(tab==='genel')renderGenel(rows);
+  else if(tab==='mus')renderCustomers(rows);
+  else if(tab==='aylik')renderAylik(rows);
+  else if(tab==='kap')renderCapacity(rows);
+  else if(tab==='hedef')renderTargets(rows);
+}
+function setTab(tab){
+  TAB=tab;
+  document.querySelectorAll('#tabbar button').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));
+  document.querySelectorAll('.tabpage').forEach(p=>p.style.display=p.id==='tab-'+tab?'':'none');
+  renderTab(tab);
+}
+function renderAll(){
+  renderKPIs(getFiltered());
+  renderTab(TAB);
+  $('resultCount').textContent=`${nf0.format(getFiltered().length)} kayıt filtrede`;
 }
 function refreshUI(){populateFilters();renderAll();setPill(hasCloud()?'cloud':'local');}
 
@@ -767,6 +1281,8 @@ function downloadTemplate(){
     ['ÖRNEK MÜŞTERİ B LTD','EXPORT-2','PLANLI','PARSİYEL TIR',1,'16.01.2025','50','50','','']]);
   ws['!cols']=[{wch:30},{wch:11},{wch:10},{wch:14},{wch:7},{wch:12},{wch:12},{wch:18},{wch:7},{wch:15}];
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Sevkiyat');
+  const hw=XLSX.utils.aoa_to_sheet([['AY','ARAÇ HEDEF','M3 HEDEF'],['2025-02',250,18000],['2025-03',280,20000]]);
+  XLSX.utils.book_append_sheet(wb,hw,'HEDEF');
   XLSX.writeFile(wb,'Sevkiyat_Sablon.xlsx');
 }
 function exportReports(){
@@ -789,8 +1305,16 @@ function exportReports(){
     ...deps.map(d=>{let tot=0;return[d,...tips.map(t=>{const c=cell[d+'|'+t]||{[val]:0};tot+=c[val];return val==='m3'?+c[val].toFixed(1):c[val];}),val==='m3'?+tot.toFixed(1):tot];})];
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(mkMat('adet')),'Matris-Arac');
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(mkMat('m3')),'Matris-m3');
+  const custs=custAgg(rows);
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([
+    ['SIRA','MÜŞTERİ','SINIF','ARAÇ','M³','PAY %','KÜM %','YÜKLEME SAYISI','SON YÜKLEME'],
+    ...custs.map((c,i)=>[i+1,c.name,c.cls,c.adet,+c.m3.toFixed(1),+c.share.toFixed(1),+c.cum.toFixed(1),c.loads,c.last?fmtDate(c.last):''])]),'MusteriABC');
+  const mon=monthlyAgg(rows);
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([
+    ['AY','ARAÇ','M³',...deps.map(d=>d+' m³')],
+    ...mon.map(m=>[m.ym,m.adet,+m.m3.toFixed(1),...deps.map(d=>+(m.deps[d]||0).toFixed(1))])]),'Aylik');
   XLSX.writeFile(wb,`Sevkiyat_Rapor_${new Date().toISOString().slice(0,10)}.xlsx`);
-  toast('Excel raporu indirildi (5 sayfa)');
+  toast('Excel raporu indirildi (7 sayfa)');
 }
 
 /* ================= Örnek veri ================= */
@@ -835,12 +1359,44 @@ document.addEventListener('DOMContentLoaded',()=>{
   $('btnExport').onclick=exportReports;
   $('btnDiag').onclick=runDiag;
   $('diagClose').onclick=()=>$('diagOv').classList.remove('show');
+  $('btnPrint').onclick=()=>window.print();
   $('btnSample').onclick=loadSample;
   $('btnMap').onclick=()=>openMapper('',WB?($('mapSheet').value||WB.SheetNames[0]):null);
   $('btnClear').onclick=async()=>{if(confirm('Tüm veriler (buluttaysa buluttan da) silinecek. Emin misiniz?')){DATA=[];refreshUI();await saveAll();$('statLine').textContent='Henüz veri yüklenmedi.';toast('Veriler temizlendi');}};
-  $('btnReset').onclick=()=>{['fYear','fBolum','fTip','fWeek'].forEach(id=>$(id).value='all');['fFrom','fTo','fSearch'].forEach(id=>$(id).value='');renderAll();};
-  ['fYear','fBolum','fTip','fWeek','fFrom','fTo'].forEach(id=>$(id).addEventListener('change',renderAll));
+  $('btnReset').onclick=()=>{FILTER_IDS.forEach(id=>$(id).value='all');$('fFrom').value='';$('fTo').value='';$('fSearch').value='';renderAll();};
+  [...FILTER_IDS,'fFrom','fTo'].forEach(id=>$(id).addEventListener('change',renderAll));
   $('fSearch').addEventListener('input',renderAll);
+  // Sekmeler
+  document.querySelectorAll('#tabbar button').forEach(b=>b.addEventListener('click',()=>setTab(b.dataset.tab)));
+  // Preset
+  renderPresets();
+  $('btnPresetSave').onclick=()=>{
+    const name=$('presetName').value.trim();
+    if(!name){toast('Önce set adı girin','error');return;}
+    PRESETS.push({name,vals:Object.fromEntries(FILTER_IDS.map(id=>[id,$(id).value]))});
+    saveAllPresets();renderPresets();$('presetName').value='';toast('"'+name+'" kaydedildi');
+  };
+  $('btnPresetApply').onclick=()=>{
+    const i=+$('presetSel').value;
+    if($('presetSel').value===''){toast('Uygulanacak set seçin','error');return;}
+    Object.entries(PRESETS[i].vals).forEach(([id,v])=>{$(id).value=v;});
+    renderAll();toast('"'+PRESETS[i].name+'" uygulandı');
+  };
+  $('btnPresetDel').onclick=()=>{
+    const i=+$('presetSel').value;
+    if($('presetSel').value===''){toast('Silinecek set seçin','error');return;}
+    PRESETS.splice(i,1);saveAllPresets();renderPresets();toast('Set silindi');
+  };
+  // Isı haritası yıl seçici
+  $('hmYear').addEventListener('change',()=>{HM_YEAR=+$('hmYear').value;renderHeatmap(getFiltered());});
+  // Müşteri detay kapat
+  $('custClose').onclick=()=>$('custOv').classList.remove('show');
+  // Hedef editör
+  $('btnTargetEdit').onclick=openTargetEditor;
+  $('tgtYear').addEventListener('change',buildTgtTable);
+  $('tgtSave').onclick=saveTargetsFromEditor;
+  $('tgtClose').onclick=()=>$('targetOv').classList.remove('show');
+  // Mapper
   $('mapSheet').addEventListener('change',()=>{$('mapHeadRow').value=Math.max(1,mapDefaultHeadRow[$('mapSheet').value]||1);buildMapFields();});
   $('mapHeadRow').addEventListener('change',buildMapFields);
   $('mapCancel').onclick=()=>$('mapperOv').classList.remove('show');
@@ -850,6 +1406,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     $('mapperOv').classList.remove('show');
     applyRows(rows,$('mapSheet').value,'manuel eşleştirme');
   };
+  // Cloud
   $('btnCloud').onclick=()=>{
     $('cfgUrl').value=CFG.url;$('cfgKey').value=CFG.key;$('cfgTable').value=CFG.table;
     $('cfgStatus').textContent=hasCloud()?'✅ Şu anda buluta bağlı: '+CFG.url:'💾 Şu anda yalnızca tarayıcı içi kayıt (IndexedDB) kullanılıyor.';
@@ -879,12 +1436,13 @@ document.addEventListener('DOMContentLoaded',()=>{
   };
   $('cfgDisconnect').onclick=()=>{localStorage.removeItem(CFG_LS);CFG={url:'',key:'',table:'sevkiyat'};
     setPill('local');$('cfgStatus').textContent='💾 Bağlantı kesildi.';};
+  // Dropzone
   const dz=$('dropzone');
   dz.addEventListener('click',()=>$('fileInput').click());
   dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over');});
   dz.addEventListener('dragleave',()=>dz.classList.remove('over'));
   dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');handleFile(e.dataTransfer.files[0]);});
-  initStorage().then(refreshUI);
+  initStorage().then(()=>refreshUI());
 });
 </script>
 </body>

@@ -80,7 +80,7 @@ select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
 .modal h3{font-size:16px;margin-bottom:4px}
 .map-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin:12px 0}
 .map-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
-#mapPreview,#cfgStatus{padding:10px 12px;background:#f8fafc;border:1px solid var(--border);border-radius:8px;font-size:12.5px;line-height:1.5}
+#mapPreview,#cfgStatus,#diagBody{padding:10px 12px;background:#f8fafc;border:1px solid var(--border);border-radius:8px;font-size:12.5px;line-height:1.5}
 </style>
 </head>
 <body>
@@ -95,6 +95,7 @@ select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
     <button class="btn btn-primary" id="btnUpload">📂 Excel Yükle</button>
     <button class="btn btn-ghost" id="btnTemplate">⬇ Şablon</button>
     <button class="btn btn-ghost" id="btnExport">📊 Rapor İndir</button>
+    <button class="btn btn-ghost" id="btnDiag">🔍 Teşhis</button>
     <button class="btn btn-ghost" id="btnCloud">☁️ Bağlantı</button>
     <button class="btn btn-danger" id="btnClear">🗑 Temizle</button>
   </div>
@@ -107,7 +108,7 @@ select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
     <div class="dropzone" id="dropzone">
       <div class="big">📥</div>
       <b>Excel dosyasını buraya sürükleyin veya tıklayın</b>
-      <span>TÜM sayfalar okunup birleştirilir · gün/ay formatı otomatik algılanır · kolonlar gerekirse elle eşleştirilir</span>
+      <span>TÜM sayfalar okunup birleştirilir · aynı sayfadaki tekrar yükleme satırları korunur · gün/ay formatı otomatik algılanır</span>
     </div>
     <div class="upload-side">
       <label class="chk"><input type="checkbox" id="merge"> Mevcut verilerle <b>&nbsp;birleştir</b> (kapalıysa yeni yükleme eski veriyi değiştirir)</label>
@@ -174,6 +175,16 @@ select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
   </div>
 </div>
 
+<!-- TEŞHİS -->
+<div class="modal-ov" id="diagOv">
+  <div class="modal" style="max-width:760px">
+    <h3>🔍 Excel Yükleme Teşhisi</h3>
+    <p class="hint">Solda Excel hücresindeki ham değer, sağda panele yorumlanan tarih. ❌ işaretliler tarih olarak okunamıyor. Not: Dosyayı yükledikten sonra sayfayı yenilemeden kullanın.</p>
+    <div id="diagBody"></div>
+    <div class="map-actions"><button class="btn btn-outline" id="diagClose">Kapat</button></div>
+  </div>
+</div>
+
 <!-- CLOUD BAĞLANTI -->
 <div class="modal-ov" id="cloudOv">
   <div class="modal" style="max-width:640px">
@@ -223,11 +234,10 @@ function asciiLower(s){return String(s??'')
   .toLowerCase();}
 function toNum(v){if(v===''||v==null)return 0;const n=parseFloat(String(v).replace(',','.'));return isNaN(n)?0:n;}
 
-/* ================= Tarih çözümleme (gün/ay karışması düzeltildi) ================= */
+/* ================= Tarih çözümleme ================= */
 const MONTHS_TR={ocak:1,subat:2,mart:3,nisan:4,mayis:5,haziran:6,temmuz:7,agustos:8,eylul:9,ekim:10,kasim:11,aralik:12};
 function mkDate(y,mo,d){if(mo<1||mo>12||d<1||d>31)return null;const dt=new Date(y,mo-1,d);return isNaN(dt)?null:dt;}
-/* Tarih-saat bileşeni 00:00 olan değerleri takvim günü olarak normalleştir
-   (UTC gece yarısı ↔ yerel kayması = +1 gün kaymasının sebebiydi) */
+/* UTC gece yarısı değerlerini yerel takvim gününe çevir (+1 gün kaymasını önler) */
 function normalizeDate(d){
   if(isNaN(d))return null;
   const lMid=d.getHours()===0&&d.getMinutes()===0;
@@ -246,13 +256,13 @@ function parseDate(v){
   if(!s)return null;
   let m=s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/);           /* 2021-01-04 */
   if(m)return mkDate(+m[1],+m[2],+m[3]);
-  m=s.match(/^(\d{1,2})[.\-\/](\d{1,2})[.\-\/](\d{2,4})/);           /* 04.01.2021 / 1/4/2021 */
+  m=s.match(/^(\d{1,2})[.\-\/](\d{1,2})[.\-\/](\d{2,4})/);           /* 04.01.2021 */
   if(m){
     let a=+m[1],b=+m[2],y=+m[3];if(y<100)y+=2000;
     let d,mo;
     if(a>12){d=a;mo=b;}          /* ilk sayı 12'den büyükse kesin gün */
-    else if(b>12){mo=a;d=b;}     /* ikinci sayı 12'den büyükse format aa/gg */
-    else{d=a;mo=b;}              /* belirsizse gün-önce (TR standardı) */
+    else if(b>12){mo=a;d=b;}     /* ikinci 12'den büyükse format aa/gg */
+    else{d=a;mo=b;}              /* belirsizse gün-önce (TR) */
     return mkDate(y,mo,d);
   }
   const tr=asciiLower(s);                                            /* "4 Ocak 2021" */
@@ -400,7 +410,7 @@ const FIELD_DEFS=[
 ];
 function detectHeader(aoa){
   let best={idx:-1,score:0,cols:{}};
-  const limit=Math.min(aoa.length,100); /* 40 → 100: başlık aşağıda olabilir */
+  const limit=Math.min(aoa.length,100);
   for(let i=0;i<limit;i++){
     const r=aoa[i]||[];
     if(!r||r.every(c=>c===''||c==null))continue;
@@ -409,7 +419,6 @@ function detectHeader(aoa){
       for(const f of FIELD_DEFS){if(f.exact.includes(n)){cols[c]=f.key;score+=3;break;}}});
     r.forEach((h,c)=>{const n=norm(h);if(!n||cols[c]!=null)return;
       for(const f of FIELD_DEFS){if(f.exact.some(a=>a.length>=4&&n.includes(a))){cols[c]=f.key;score+=1;break;}}});
-    /* Tarih ve miktar kolonları olan başlıklara ek puan (yanlış satır seçilmesini önler) */
     if(Object.values(cols).includes('tarih'))score+=4;
     if(Object.values(cols).includes('adet'))score+=2;
     if(Object.values(cols).includes('toplamM3'))score+=2;
@@ -436,10 +445,12 @@ function rowsFromSheet(aoa,hi,cols){
 }
 let WB=null;
 function sheetAoa(name){return XLSX.utils.sheet_to_json(WB.Sheets[name],{header:1,defval:''});}
-/* TÜM sayfaları oku ve birleştir; sayfalar arası birebir kopyaları teke indir */
+/* TÜM sayfaları oku ve birleştir. Kopya temizliği SADECE sayfalar ARASI:
+   farklı sayfalarda birebir aynı satırlar tek alınır;
+   AYNI sayfadaki tekrarlar (aynı güne 2 ayrı yükleme) KORUNUR. */
 function autoParse(){
   const sig=r=>[r.musteri,r.bolum,r.kategori,r.tip,r.adet,r.tarihStr,r.parsiyelM3,r.toplamM3].join('|');
-  const seen=new Set();
+  const perSheet=new Map();
   let combined=[];const used=[];let dups=0;
   WB.SheetNames.forEach(name=>{
     const ws=WB.Sheets[name];if(!ws||!ws['!ref'])return;
@@ -449,11 +460,17 @@ function autoParse(){
     const rows=rowsFromSheet(aoa,det.idx,det.cols);
     if(!rows.length)return;
     used.push(name);
+    console.log(`[Sevkiyat] Sayfa "${name}": ${rows.length} satır okundu`);
     rows.forEach(r=>{
       const s=sig(r);
-      if(seen.has(s)){dups++;return;} /* başka sayfada birebir aynı kopya */
-      seen.add(s);combined.push(r);
+      let isDup=false;
+      for(const[otherName,otherSet]of perSheet){
+        if(otherName!==name&&otherSet.has(s)){isDup=true;break;}
+      }
+      if(isDup){dups++;return;}
+      combined.push(r);
     });
+    perSheet.set(name,new Set(rows.map(sig)));
   });
   return{used,rows:combined,dups};
 }
@@ -505,7 +522,7 @@ function handleFile(file){
       console.log('[Sevkiyat] Sayfalar:',WB.SheetNames);
       const res=autoParse();
       console.log('[Sevkiyat] Okunan sayfalar:',res.used,'· satır:',res.rows.length,'· sayfalar-arası kopya:',res.dups);
-      if(res.rows.length)applyRows(res.rows,res.used.join(', '),file.name+(res.dups?` (${res.dups} kopya satır teke indirildi)`:''));
+      if(res.rows.length)applyRows(res.rows,res.used.join(', '),file.name+(res.dups?` (${res.dups} sayfalar-arası kopya teke indirildi)`:''));
       else{openMapper(file.name,WB.SheetNames[0]);toast('Otomatik tanıma başarısız — kolonları elle eşleştirin','error');}
     }catch(err){toast('Dosya okunamadı: '+err.message,'error');}
   };
@@ -557,6 +574,45 @@ function updateMapPreview(){
       p.style.color='';p.innerHTML=`✅ <b>${rows.length}</b> satır algılandı. Örnek: ${s.map(esc).join(' &nbsp;|&nbsp; ')}`;
     }else{p.style.color='#dc2626';p.textContent='⚠ Bu eşlemeyle satır bulunamadı — sayfa, başlık satırı veya kolonları kontrol edin.';}
   }catch(e){}
+}
+
+/* ================= Teşhis ================= */
+function rawCellDesc(v){
+  if(v==null||v==='')return '(boş)';
+  if(v instanceof Date)return 'Tarih hücresi → '+v.getFullYear()+'-'+pad2(v.getMonth()+1)+'-'+pad2(v.getDate());
+  if(typeof v==='number')return 'Sayı → '+v;
+  return 'Metin → "'+String(v)+'"';
+}
+function runDiag(){
+  if(!WB){toast('Önce bir Excel dosyası yükleyin (yenileme sonrası dosya bellekten silinir)','error');return;}
+  let html='';
+  WB.SheetNames.forEach(name=>{
+    const ws=WB.Sheets[name];if(!ws||!ws['!ref'])return;
+    const aoa=sheetAoa(name);
+    const det=detectHeader(aoa);
+    html+=`<h4 style="margin:14px 0 6px;font-size:14px">📄 Sayfa: <b>${esc(name)}</b></h4>`;
+    if(det.idx<0){html+='<p class="hint">❌ Başlık satırı tanınamadı — bu sayfa atlandı.</p>';return;}
+    const colsTxt=Object.entries(det.cols).map(([k,v])=>colLetter(+k)+' → '+(FIELD_DEFS.find(f=>f.key===v)?.label||v)).join(' · ')||'yok';
+    html+=`<p class="hint">Başlık satırı: ${det.idx+1} · Eşleşen kolonlar: ${esc(colsTxt)}</p>`;
+    if(!Object.values(det.cols).includes('tarih'))html+='<p class="hint">⚠️ Tarih kolonu eşleşmedi!</p>';
+    const dCol=Object.entries(det.cols).find(([k,v])=>v==='tarih');
+    let shown=0,bad=0;
+    if(dCol){
+      html+='<div class="tbl-wrap" style="max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:8px"><table class="tbl"><thead><tr><th>Excel Satırı</th><th>Hücredeki Ham Değer</th><th>Panelde Yorumlanan</th><th></th></tr></thead><tbody>';
+      for(let i=det.idx+1;i<aoa.length&&shown<25;i++){
+        const r=aoa[i];if(!r||r.every(c=>c===''||c==null))continue;
+        shown++;
+        const raw=r[+dCol[0]],p=parseDate(raw);
+        if(!p&&raw!==''&&raw!=null)bad++;
+        html+=`<tr><td>${i+1}</td><td>${esc(rawCellDesc(raw))}</td><td><b>${p?fmtDate(p):'—'}</b></td><td>${p?'✅':((raw===''||raw==null)?'⬜':'❌')}</td></tr>`;
+      }
+      html+='</tbody></table></div>';
+    }
+    const rows=rowsFromSheet(aoa,det.idx,det.cols);
+    html+=`<p class="hint">Bu sayfadan okunan satır: <b>${rows.length}</b>${bad?` · İlk 25 satırda ❌ tarih: ${bad}`:''}</p>`;
+  });
+  $('diagBody').innerHTML=html;
+  $('diagOv').classList.add('show');
 }
 
 /* ================= Filtre ================= */
@@ -763,6 +819,8 @@ document.addEventListener('DOMContentLoaded',()=>{
   $('btnUpload2').onclick=()=>$('fileInput').click();
   $('btnTemplate').onclick=downloadTemplate;
   $('btnExport').onclick=exportReports;
+  $('btnDiag').onclick=runDiag;
+  $('diagClose').onclick=()=>$('diagOv').classList.remove('show');
   $('btnSample').onclick=loadSample;
   $('btnMap').onclick=()=>openMapper('',WB?($('mapSheet').value||WB.SheetNames[0]):null);
   $('btnClear').onclick=async()=>{if(confirm('Tüm veriler (buluttaysa buluttan da) silinecek. Emin misiniz?')){DATA=[];refreshUI();await saveAll();$('statLine').textContent='Henüz veri yüklenmedi.';toast('Veriler temizlendi');}};

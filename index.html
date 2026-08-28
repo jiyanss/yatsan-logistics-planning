@@ -124,7 +124,7 @@ select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
     <div><h1>Sevkiyat Yükleme Paneli</h1><span>Bölüm · Sevkiyat Tipi · Hacim (m³) · Müşteri Analizi</span></div>
   </div>
   <div class="actions">
-    <span class="pill" id="syncPill">💾 başlatılıyor…</span>
+    <span class="pill" id="syncPill" title="">💾 başlatılıyor…</span>
     <button class="btn btn-primary" id="btnUpload">📂 Excel Yükle</button>
     <button class="btn btn-ghost" id="btnTemplate">⬇ Şablon</button>
     <button class="btn btn-ghost" id="btnExport">📊 Rapor İndir</button>
@@ -150,7 +150,7 @@ select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
     <div class="dropzone" id="dropzone">
       <div class="big">📥</div>
       <b>Excel dosyasını buraya sürükleyin veya tıklayın</b>
-      <span>Etiketler otomatik standartlaştırılır ("Komple Tır" = "KOMPLE Tır" = "KOMPLE TIR ") · "HEDEF" sayfası varsa hedefler alınır</span>
+      <span>Yüklemeden önce üstteki rozeti kontrol edin: buluta kaydedilmemesi için <b>☁️ Bulut</b> yazmalı. "💾" yazıyorsa ☁️ Bağlantı'dan bağlanın.</span>
     </div>
     <div class="upload-side">
       <label class="chk"><input type="checkbox" id="merge"> Mevcut verilerle <b>&nbsp;birleştir</b> (kapalıysa yeni yükleme eski veriyi TAMAMEN değiştirir)</label>
@@ -242,7 +242,7 @@ select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
   <div class="tabpage" id="tab-kap" style="display:none">
     <section class="card">
       <h3>📐 Kapasite Doluluk Oranı</h3>
-      <p class="hint">Teorik kapasiteleri aşağıdan düzenleyebilirsiniz (tarayıcınıza kaydedilir). Doluluk = gerçekleşen m³ ÷ (araç × kapasite). Düşük doluluk → konsolidasyon fırsatı.</p>
+      <p class="hint">Teorik kapasiteleri aşağıdan düzenleyebilirsiniz (tarayıcınıza kaydedilir). Doluluk = gerçekleşen m³ ÷ (araç × kapasite).</p>
       <div id="capInputs" style="max-width:460px;margin-bottom:14px"></div>
       <div class="ch-wrap tall"><canvas id="chCap"></canvas></div>
       <div class="tbl-wrap" style="margin-top:12px" id="tblCap"></div>
@@ -319,9 +319,9 @@ select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
 
 <!-- CLOUD BAĞLANTI -->
 <div class="modal-ov" id="cloudOv">
-  <div class="modal" style="max-width:640px">
+  <div class="modal" style="max-width:680px">
     <h3>☁️ Merkezi Veritabanı (Supabase)</h3>
-    <p class="hint">Bağlanırsanız veriler sunucuda saklanır: sayfa yenilemede silinmez, hangi cihazdan girerseniz aynı veriyi görürsünüz.</p>
+    <p class="hint">⚠️ Bağlantı ayarı <b>her tarayıcıda ayrı</b> yapılır. Yeni bir tarayıcı/cihazda ilk kez kullanıyorsanız önce buradan bağlanın. Ayrıca paneli daima <b>sabit üretim adresinizden</b> (vercel.app ana adresi veya kendi domaininiz) kullanın; her deploy'un önizleme adresi farklıdır ve orada ayarlar boş başlar.</p>
     <div class="map-grid">
       <div class="field"><label>Project URL</label><input type="text" id="cfgUrl" placeholder="https://xxxxx.supabase.co"></div>
       <div class="field"><label>Anon Public Key</label><input type="text" id="cfgKey" placeholder="eyJhbGciOi..."></div>
@@ -330,10 +330,12 @@ select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
     <div id="cfgStatus"></div>
     <div class="map-actions">
       <button class="btn btn-primary" id="cfgConnect">🔌 Bağlan</button>
+      <button class="btn btn-outline" id="cfgPush">⬆ Buluta Zorla Yükle</button>
       <button class="btn btn-outline" id="cfgRefresh">🔄 Buluttan Yenile</button>
       <button class="btn btn-danger" id="cfgDisconnect">Bağlantıyı Kes</button>
       <button class="btn btn-outline" id="cfgClose">Kapat</button>
     </div>
+    <p class="hint" style="margin-top:10px">⬆ <b>Zorla Yükle</b>: bu tarayıcıdaki tüm verileri buluta yazar (buluttakiler değişir). 🔄 <b>Yenile</b>: buluttakileri bu tarayıcıya indirir (yerel değişir). Panel açılışta iki tarafı otomatik birleştirdiği için normalde bu düğmelere gerek kalmaz.</p>
   </div>
 </div>
 
@@ -369,17 +371,11 @@ function asciiLower(s){return String(s??'')
   .replace(/Ö/g,'o').replace(/ö/g,'o').replace(/Ç/g,'c').replace(/ç/g,'c')
   .toLowerCase();}
 function toNum(v){if(v===''||v==null)return 0;const n=parseFloat(String(v).replace(',','.'));return isNaN(n)?0:n;}
-
-/* ================= Etiket temizliği & standartlaştırma =================
-   Excel'de görünmez farklar (sondaki boşluk, çift boşluk, "Tır"/"TIR",
-   İ/i farklılıkları) aynı etiketin grafikte 2 kez çıkmasına yol açar.
-   cleanText: görünmez karakterleri siler. canonicalizeRows: norm()
-   anahtarı aynı olan varyantları TEK yazıma indirger. */
 function cleanText(s){
   return String(s??'')
-    .replace(/\u00A0/g,' ')                       /* kesmesiz boşluk */
-    .replace(/[\u200B-\u200D\uFEFF]/g,'')         /* görünmez karakterler */
-    .replace(/\s+/g,' ')                          /* çift boşluk */
+    .replace(/\u00A0/g,' ')
+    .replace(/[\u200B-\u200D\uFEFF]/g,'')
+    .replace(/\s+/g,' ')
     .trim();
 }
 function canonicalKey(s){return norm(cleanText(s));}
@@ -401,7 +397,6 @@ function canonicalizeRows(rows){
       let best=null,bestScore=-1;
       variants.forEach((n,v)=>{
         const isUpper=v===v.toLocaleUpperCase('tr-TR');
-        /* en sık kullanılan kazanır; eşitliğe yakın durumlarda BÜYÜK HARFLİ tercih edilir */
         const score=n+(isUpper?.5:0);
         if(score>bestScore){bestScore=score;best=v;}
       });
@@ -518,6 +513,15 @@ async function cloudTest(){
   const r=await fetch(`${base()}/rest/v1/${CFG.table}?select=kayit_key&limit=1`,{headers:cloudHeaders()});
   if(!r.ok)throw await readErr(r,'Bağlantı testi başarısız');
 }
+async function cloudCount(){
+  try{
+    const r=await fetch(`${base()}/rest/v1/${CFG.table}?select=kayit_key&limit=1`,{headers:cloudHeaders({'Prefer':'count=exact'})});
+    if(!r.ok)return null;
+    const cr=r.headers.get('content-range');
+    if(cr){const m=cr.split('/')[1];return m==='*'?null:+m;}
+  }catch(e){}
+  return null;
+}
 async function cloudLoadAll(){
   let all=[],offset=0;const page=1000;
   while(true){
@@ -546,17 +550,31 @@ async function cloudSaveAll(rows){
     if(!r.ok)throw await readErr(r,'Yazma hatası');
   }
 }
+async function withRetry(fn,tries=2){
+  let err;
+  for(let i=0;i<=tries;i++){
+    try{return await fn();}catch(e){err=e;if(i<tries)await new Promise(r=>setTimeout(r,800*(i+1)));}
+  }
+  throw err;
+}
 
 /* ================= Kaydet / Yükle ================= */
-let SAVING=false;
+let SAVING=false,SAVE_QUEUED=false,LAST_SAVE_ERR='';
 async function saveAll(){
-  if(SAVING)return;SAVING=true;setPill('saving');
+  if(SAVING){SAVE_QUEUED=true;return;}
+  SAVING=true;setPill('saving');
   try{
-    await idbSet('rows',DATA);
-    if(hasCloud()){await cloudSaveAll(DATA);setPill('cloud');}
-    else setPill('local');
-  }catch(e){setPill('err');toast('Kaydetme hatası: '+e.message,'error');}
+    await idbSet('rows',DATA);   /* önce yerel — veri asla kaybolmaz */
+    if(hasCloud()){
+      await withRetry(()=>cloudSaveAll(DATA));
+      LAST_SAVE_ERR='';setPill('cloud');
+    }else{LAST_SAVE_ERR='';setPill('local');}
+  }catch(e){
+    LAST_SAVE_ERR=e.message;setPill('err');
+    toast('Buluta kaydedilemedi: '+e.message+' — veriler bu tarayıcıda güvende; bağlantıyı kontrol edip ☁️ Bağlantı → ⬆ Buluta Zorla Yükle kullanın.','error');
+  }
   SAVING=false;
+  if(SAVE_QUEUED){SAVE_QUEUED=false;saveAll();}
 }
 async function initStorage(){
   loadCfg();
@@ -566,32 +584,49 @@ async function initStorage(){
   try{const o=JSON.parse(localStorage.getItem('sevkiyat_dashboard_v1'));
     if(o?.rows?.length&&!await idbGet('rows')){await idbSet('rows',o.rows.map(hydrate));localStorage.removeItem('sevkiyat_dashboard_v1');}
   }catch(e){}
-  DATA=((await idbGet('rows'))||[]).map(hydrate);
+  const local=((await idbGet('rows'))||[]).map(hydrate);
+  DATA=local;
   if(hasCloud()){
     setPill('saving');
     try{
-      const rows=await cloudLoadAll();
-      if(rows.length)DATA=rows;
-      else if(DATA.length)await cloudSaveAll(DATA);
-      setPill('cloud');
-    }catch(e){setPill('err');toast('Bulut okunamadı, yerel veri kullanılıyor: '+e.message,'error');}
-  }else setPill('local');
+      const cloud=await cloudLoadAll();
+      if(!cloud.length){
+        /* Bulut boş → yereli buluta taşı */
+        if(local.length)await withRetry(()=>cloudSaveAll(local));
+        DATA=local;
+      }else{
+        /* Bulut + yerel BİRLEŞTİR (ID bazlı union) — hiçbir taraf kaybolmaz */
+        const map=new Map();
+        cloud.forEach(r=>map.set(r.id,r));
+        local.forEach(r=>{if(!map.has(r.id))map.set(r.id,r);});
+        const merged=[...map.values()];
+        DATA=merged;
+        if(merged.length!==cloud.length){
+          /* Yerelde bulutta olmayan kayıtlar vardı → bulutu tamamla */
+          await withRetry(()=>cloudSaveAll(merged));
+          toast(`🔗 Bulut ile yerel veriler birleştirildi (${merged.length} kayıt) ve bulut güncellendi`);
+        }
+      }
+      LAST_SAVE_ERR='';setPill('cloud');
+    }catch(e){
+      LAST_SAVE_ERR=e.message;setPill('err');
+      toast('Buluta erişilemedi, yerel veri kullanılıyor: '+e.message,'error');
+    }
+  }else{LAST_SAVE_ERR='';setPill('local');}
   DATA=DATA.map(hydrate);
-  /* Mevcut kayıtlardaki yazım farklarını da standartlaştır (bir kez) */
   const{report,total}=canonicalizeRows(DATA);
   if(total){
-    console.log('[Sevkiyat] Mevcut veride birleştirilen etiket varyantları:',report);
-    refreshUI();
-    await saveAll();
-    toast(`🔤 ${total} kayıtta etiket yazımı standartlaştırıldı (detay: F12 Console)`);
+    console.log('[Sevkiyat] Birleştirilen etiket varyantları:',report);
+    await idbSet('rows',DATA);
+    if(hasCloud()){try{await withRetry(()=>cloudSaveAll(DATA));}catch(e){}}
   }
 }
 function setPill(mode){
   const p=$('syncPill');
-  if(mode==='cloud'){p.className='pill cloud';p.textContent='☁️ Bulut · '+nf0.format(DATA.length)+' kayıt';}
-  else if(mode==='local'){p.className='pill';p.textContent='💾 Bu tarayıcıda · '+nf0.format(DATA.length)+' kayıt';}
-  else if(mode==='saving'){p.className='pill';p.textContent='⏳ kaydediliyor…';}
-  else if(mode==='err'){p.className='pill err';p.textContent='⚠️ Kayıt hatası';}
+  if(mode==='cloud'){p.className='pill cloud';p.title='';p.textContent='☁️ Bulut · '+nf0.format(DATA.length)+' kayıt';}
+  else if(mode==='local'){p.className='pill';p.title='Supabase bağlı değil — veriler yalnızca bu tarayıcıda tutuluyor. Bağlanmak için ☁️ Bağlantı.';p.textContent='💾 Sadece bu tarayıcı · '+nf0.format(DATA.length)+' kayıt';}
+  else if(mode==='saving'){p.className='pill';p.title='';p.textContent='⏳ kaydediliyor…';}
+  else if(mode==='err'){p.className='pill err';p.title=LAST_SAVE_ERR;p.textContent='⚠️ Kayıt hatası (detay: imleci burada tutun)';}
 }
 
 /* ================= Excel okuma ================= */
@@ -712,6 +747,8 @@ function fileStat(rows){
   return{noDate,range};
 }
 async function applyRows(rows,sheetLabel,fileName){
+  /* Önce mevcut verinin etiketlerini standartlaştır ki anahtar eşleşmesi tutarlı olsun */
+  canonicalizeRows(DATA);
   const pools=new Map();
   DATA.forEach(r=>{const k=keyOf(r);if(!pools.has(k))pools.set(k,[]);pools.get(k).push(r.id);});
   const mapped=rows.map(r=>{
@@ -730,12 +767,15 @@ async function applyRows(rows,sheetLabel,fileName){
   refreshUI();
   await saveAll();
   const st=fileStat(DATA);
+  const savedOk=hasCloud()?!LAST_SAVE_ERR:true;
   $('statLine').innerHTML=`✅ <b>${esc(fileName)}</b> · sayfa(lar): ${esc(sheetLabel)}<br>`+
     `📄 ${nf0.format(rows.length)} satır işlendi · toplam <b>${nf0.format(DATA.length)}</b> kayıt<br>`+
     `📅 Tarih aralığı: <b>${st.range}</b>`+
     (total?` · 🔤 ${total} kayıtta etiket standartlaştırıldı`:'')+
-    (st.noDate?` · <span style="color:#dc2626">${nf0.format(st.noDate)} satırda tarih okunamadı</span>`:'');
-  toast(`${rows.length} kayıt yüklendi · tarih aralığı: ${st.range}`+(total?` · ${total} etiket düzeltildi`:''));
+    (st.noDate?` · <span style="color:#dc2626">${nf0.format(st.noDate)} satırda tarih okunamadı</span>`:'')+
+    (savedOk?'':` · <span style="color:#dc2626"><b>⚠️ Buluta YAZILAMADI!</b> ☁️ Bağlantı → ⬆ Buluta Zorla Yükle</span>`);
+  toast(`${rows.length} kayıt yüklendi · ${hasCloud()?(savedOk?'buluta kaydedildi ✓':'⚠️ BULUTA KAYDEDİLEMEDİ'):'tarayıcıya kaydedildi'}`,
+    savedOk?'success':'error');
 }
 function handleFile(file){
   if(!file)return;
@@ -820,7 +860,6 @@ function rawCellDesc(v){
   }
   return 'Metin → "'+String(v)+'"';
 }
-/* Dosyadaki yazım farklarını (görünmez karakter dahil) gösterir */
 function labelAudit(aoa,det){
   if(det.idx<0)return'';
   const get=f=>{for(const[k,fl]of Object.entries(det.cols))if(fl===f)return +k;return -1;};
@@ -987,8 +1026,7 @@ function renderCharts(rows){
   const FC=4;
   let fLabels=[],fV=[],fM=[];
   if(weekly.length>=4){
-    const wV=weekly.map(w=>w.adet),wM=weekly.map(w=>w.m3);
-    const tailV=wV.slice(-8),tailM=wM.slice(-8);
+    const tailV=weekly.map(w=>w.adet).slice(-8),tailM=weekly.map(w=>w.m3).slice(-8);
     const regV2=linreg(tailV),regM2=linreg(tailM);
     const n=tailV.length;
     let lastDate=new Date(Math.max(...dated.map(r=>r.tarih.getTime())));
@@ -1348,7 +1386,7 @@ function renderAll(){
   renderTab(TAB);
   $('resultCount').textContent=`${nf0.format(getFiltered().length)} kayıt filtrede`;
 }
-function refreshUI(){populateFilters();renderAll();setPill(hasCloud()?'cloud':'local');}
+function refreshUI(){populateFilters();renderAll();setPill(hasCloud()?(LAST_SAVE_ERR?'err':'cloud'):'local');}
 
 /* ================= Dışa aktarım ================= */
 function downloadTemplate(){
@@ -1424,7 +1462,7 @@ async function loadSample(){
 /* ================= Toast ================= */
 let toastTimer;
 function toast(msg,type='success'){const t=$('toast');t.textContent=msg;t.className='toast show '+type;
-  clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.className='toast',5000);}
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.className='toast',6000);}
 
 /* ================= Başlat ================= */
 document.addEventListener('DOMContentLoaded',()=>{
@@ -1476,9 +1514,23 @@ document.addEventListener('DOMContentLoaded',()=>{
     $('mapperOv').classList.remove('show');
     applyRows(rows,$('mapSheet').value,'manuel eşleştirme');
   };
-  $('btnCloud').onclick=()=>{
+  // Cloud
+  $('btnCloud').onclick=async()=>{
     $('cfgUrl').value=CFG.url;$('cfgKey').value=CFG.key;$('cfgTable').value=CFG.table;
-    $('cfgStatus').textContent=hasCloud()?'✅ Şu anda buluta bağlı: '+CFG.url:'💾 Şu anda yalnızca tarayıcı içi kayıt (IndexedDB) kullanılıyor.';
+    if(!hasCloud()){
+      $('cfgStatus').innerHTML='💾 <b>Bağlı değilsiniz</b> — veriler yalnızca bu tarayıcıda tutuluyor ('+nf0.format(DATA.length)+' kayıt). Yukarıya Supabase bilgilerinizi girip 🔌 Bağlan deyin.';
+    }else{
+      $('cfgStatus').textContent='⏳ Bulut durumu kontrol ediliyor…';
+      try{
+        const c=await cloudCount();
+        const match=(c!=null&&c===DATA.length);
+        $('cfgStatus').innerHTML=`☁️ Bağlı: ${esc(CFG.url)}<br>📍 Yerel: <b>${nf0.format(DATA.length)}</b> kayıt · Bulut: <b>${c==null?'?':nf0.format(c)}</b> kayıt`+
+          (match?' · ✅ eşit':` · <span style="color:#b45309"><b>⚠ fark var</b> — yereldeki son hali buluta yazmak için ⬆ Buluta Zorla Yükle</span>`)+
+          (LAST_SAVE_ERR?`<br><span style="color:#dc2626">Son kayıt hatası: ${esc(LAST_SAVE_ERR)}</span>`:'');
+      }catch(e){
+        $('cfgStatus').innerHTML='❌ Buluta erişilemedi: '+esc(e.message)+'<br><span class="hint">Supabase ücretsiz projeler 7 gün hareketsizlikte duraklatılır — supabase.com panosundan projeyi Restore edin.</span>';
+      }
+    }
     $('cloudOv').classList.add('show');
   };
   $('cfgClose').onclick=()=>$('cloudOv').classList.remove('show');
@@ -1487,17 +1539,33 @@ document.addEventListener('DOMContentLoaded',()=>{
     $('cfgStatus').textContent='⏳ Bağlantı test ediliyor…';
     try{
       await cloudTest();saveCfg();
-      $('cfgStatus').textContent='✅ Bağlantı başarılı. Bulut verileri yükleniyor…';
-      const rows=await cloudLoadAll();
-      if(rows.length)DATA=rows;else if(DATA.length)await cloudSaveAll(DATA);
-      DATA=DATA.map(hydrate);refreshUI();
-      $('cfgStatus').textContent=`✅ Buluta bağlandı — ${nf0.format(DATA.length)} kayıt hazır.`;
-      toast('Bulut bağlantısı kuruldu');
+      $('cfgStatus').textContent='✅ Bağlantı başarılı. Bulut ile yerel veriler birleştiriliyor…';
+      const cloud=await cloudLoadAll();
+      const map=new Map();
+      cloud.forEach(r=>map.set(r.id,r));
+      DATA.forEach(r=>{if(!map.has(r.id))map.set(r.id,r);});
+      DATA=[...map.values()].map(hydrate);
+      await idbSet('rows',DATA);
+      await withRetry(()=>cloudSaveAll(DATA));
+      LAST_SAVE_ERR='';refreshUI();
+      $('cfgStatus').textContent=`✅ Buluta bağlandı — birleştirildi, toplam ${nf0.format(DATA.length)} kayıt bulutta.`;
+      toast('Bulut bağlantısı kuruldu ve veriler eşitlendi');
+    }catch(e){$('cfgStatus').textContent='❌ '+e.message;}
+  };
+  $('cfgPush').onclick=async()=>{
+    if(!hasCloud()){$('cfgStatus').textContent='⚠ Önce bağlanın.';return;}
+    if(!confirm(`Bu tarayıcıdaki ${DATA.length} kayıt buluta yazılacak (buluttaki mevcut içerik değişecek). Devam?`))return;
+    $('cfgStatus').textContent='⏳ Buluta yazılıyor…';
+    try{
+      await withRetry(()=>cloudSaveAll(DATA));
+      LAST_SAVE_ERR='';setPill('cloud');
+      $('cfgStatus').textContent=`✅ Bulut güncellendi — ${nf0.format(DATA.length)} kayıt yazıldı. Artık her tarayıcıdan aynı veriyi göreceksiniz.`;
+      toast('Bulut güncellendi ✓');
     }catch(e){$('cfgStatus').textContent='❌ '+e.message;}
   };
   $('cfgRefresh').onclick=async()=>{
     if(!hasCloud()){$('cfgStatus').textContent='⚠ Önce bağlanın.';return;}
-    if(!confirm('Buluttaki veriler yerel verinin üzerine yazılacak. Emin misiniz?'))return;
+    if(!confirm('Buluttaki veriler yerel verinin ÜZERİNE yazılacak (yerelde bulutta olmayan kayıtlar silinir). Emin misiniz?'))return;
     $('cfgStatus').textContent='⏳ Buluttan okunuyor…';
     try{DATA=(await cloudLoadAll()).map(hydrate);await idbSet('rows',DATA);refreshUI();
       $('cfgStatus').textContent='✅ Buluttan yenilendi — '+nf0.format(DATA.length)+' kayıt.';}

@@ -100,7 +100,6 @@ select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
 .cust-stats .cs{background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:10px 12px}
 .cust-stats .cs b{display:block;font-size:17px}
 .cust-stats .cs span{font-size:11px;color:var(--muted)}
-/* Isı haritası */
 .hm-wrap{overflow-x:auto;padding-bottom:6px}
 .hm-months,.hm-grid{display:grid;grid-template-columns:repeat(var(--cols),14px);gap:3px;width:max-content}
 .hm-months span{font-size:9.5px;color:var(--muted);height:14px;white-space:nowrap;overflow:visible}
@@ -151,7 +150,7 @@ select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
     <div class="dropzone" id="dropzone">
       <div class="big">📥</div>
       <b>Excel dosyasını buraya sürükleyin veya tıklayın</b>
-      <span>TÜM sayfalar okunur · "HEDEF" sayfası varsa hedefler otomatik içeri alınır</span>
+      <span>Etiketler otomatik standartlaştırılır ("Komple Tır" = "KOMPLE Tır" = "KOMPLE TIR ") · "HEDEF" sayfası varsa hedefler alınır</span>
     </div>
     <div class="upload-side">
       <label class="chk"><input type="checkbox" id="merge"> Mevcut verilerle <b>&nbsp;birleştir</b> (kapalıysa yeni yükleme eski veriyi TAMAMEN değiştirir)</label>
@@ -254,7 +253,7 @@ select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
   <div class="tabpage" id="tab-hedef" style="display:none">
     <section class="card">
       <h3>🎯 Hedef vs Gerçekleşen (Aylık)</h3>
-      <p class="hint">Hedefleri "🎯 Düzenle" ile girin veya Excel dosyanıza <b>HEDEF</b> adında sayfa ekleyip (kolonlar: AY · ARAÇ HEDEF · M3 HEDEF, AY formatı: 2026-01) yükleyin. Hedefler bu tarayıcıda saklanır.</p>
+      <p class="hint">Hedefleri "🎯 Düzenle" ile girin veya Excel'e <b>HEDEF</b> sayfası ekleyin (kolonlar: AY · ARAÇ HEDEF · M3 HEDEF, AY formatı: 2026-01).</p>
       <div style="margin-bottom:12px"><button class="btn btn-outline" id="btnTargetEdit">🎯 Hedefleri Düzenle</button></div>
       <div class="tbl-wrap" id="tblTargets"></div>
     </section>
@@ -283,7 +282,7 @@ select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
 <div class="modal-ov" id="diagOv">
   <div class="modal" style="max-width:760px">
     <h3>🔍 Excel Yükleme Teşhisi</h3>
-    <p class="hint">Solda Excel hücresindeki ham değer, sağda panele yorumlanan tarih. Dosyayı yükledikten sonra sayfayı yenilemeden kullanın.</p>
+    <p class="hint">Tarih tablosu: solda Excel hücresindeki ham değer, sağda panele yorumlanan tarih. Etiket Denetimi: yazım farkı bulunan etiketler.</p>
     <div id="diagBody"></div>
     <div class="map-actions"><button class="btn btn-outline" id="diagClose">Kapat</button></div>
   </div>
@@ -322,7 +321,7 @@ select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
 <div class="modal-ov" id="cloudOv">
   <div class="modal" style="max-width:640px">
     <h3>☁️ Merkezi Veritabanı (Supabase)</h3>
-    <p class="hint">Bağlanırsanız veriler sunucuda saklanır: sayfa yenilemede silinmez, hangi cihazdan girerseniz aynı veriyi görürsünüz. Bağlanmazsanız veriler yalnızca bu tarayıcıda (IndexedDB) tutulur.</p>
+    <p class="hint">Bağlanırsanız veriler sunucuda saklanır: sayfa yenilemede silinmez, hangi cihazdan girerseniz aynı veriyi görürsünüz.</p>
     <div class="map-grid">
       <div class="field"><label>Project URL</label><input type="text" id="cfgUrl" placeholder="https://xxxxx.supabase.co"></div>
       <div class="field"><label>Anon Public Key</label><input type="text" id="cfgKey" placeholder="eyJhbGciOi..."></div>
@@ -370,6 +369,51 @@ function asciiLower(s){return String(s??'')
   .replace(/Ö/g,'o').replace(/ö/g,'o').replace(/Ç/g,'c').replace(/ç/g,'c')
   .toLowerCase();}
 function toNum(v){if(v===''||v==null)return 0;const n=parseFloat(String(v).replace(',','.'));return isNaN(n)?0:n;}
+
+/* ================= Etiket temizliği & standartlaştırma =================
+   Excel'de görünmez farklar (sondaki boşluk, çift boşluk, "Tır"/"TIR",
+   İ/i farklılıkları) aynı etiketin grafikte 2 kez çıkmasına yol açar.
+   cleanText: görünmez karakterleri siler. canonicalizeRows: norm()
+   anahtarı aynı olan varyantları TEK yazıma indirger. */
+function cleanText(s){
+  return String(s??'')
+    .replace(/\u00A0/g,' ')                       /* kesmesiz boşluk */
+    .replace(/[\u200B-\u200D\uFEFF]/g,'')         /* görünmez karakterler */
+    .replace(/\s+/g,' ')                          /* çift boşluk */
+    .trim();
+}
+function canonicalKey(s){return norm(cleanText(s));}
+function canonicalizeRows(rows){
+  const fields=['musteri','bolum','kategori','tip'];
+  const report={};let total=0;
+  fields.forEach(f=>{
+    const groups=new Map();
+    rows.forEach(r=>{
+      const raw=String(r[f]??'').trim();
+      if(!raw)return;
+      const k=canonicalKey(raw);
+      if(!groups.has(k))groups.set(k,new Map());
+      const m=groups.get(k);
+      m.set(raw,(m.get(raw)||0)+1);
+    });
+    groups.forEach((variants,k)=>{
+      if(variants.size<=1)return;
+      let best=null,bestScore=-1;
+      variants.forEach((n,v)=>{
+        const isUpper=v===v.toLocaleUpperCase('tr-TR');
+        /* en sık kullanılan kazanır; eşitliğe yakın durumlarda BÜYÜK HARFLİ tercih edilir */
+        const score=n+(isUpper?.5:0);
+        if(score>bestScore){bestScore=score;best=v;}
+      });
+      rows.forEach(r=>{
+        if(canonicalKey(String(r[f]??''))===k)r[f]=best;
+      });
+      report[f]=report[f]||[];
+      variants.forEach((n,v)=>{if(v!==best){report[f].push(`"${v}" → "${best}" (${n} kayıt)`);total+=n;}});
+    });
+  });
+  return{report,total};
+}
 
 /* ================= Tarih çözümleme — SAAT DİLİMSİZ ================= */
 const MONTHS_TR={ocak:1,subat:2,mart:3,nisan:4,mayis:5,haziran:6,temmuz:7,agustos:8,eylul:9,ekim:10,kasim:11,aralik:12};
@@ -533,6 +577,14 @@ async function initStorage(){
     }catch(e){setPill('err');toast('Bulut okunamadı, yerel veri kullanılıyor: '+e.message,'error');}
   }else setPill('local');
   DATA=DATA.map(hydrate);
+  /* Mevcut kayıtlardaki yazım farklarını da standartlaştır (bir kez) */
+  const{report,total}=canonicalizeRows(DATA);
+  if(total){
+    console.log('[Sevkiyat] Mevcut veride birleştirilen etiket varyantları:',report);
+    refreshUI();
+    await saveAll();
+    toast(`🔤 ${total} kayıtta etiket yazımı standartlaştırıldı (detay: F12 Console)`);
+  }
 }
 function setPill(mode){
   const p=$('syncPill');
@@ -576,13 +628,13 @@ function rowsFromSheet(aoa,hi,cols){
   for(let i=hi+1;i<aoa.length;i++){
     const r=aoa[i];if(!r||!r.length||r.every(c=>c===''||c==null))continue;
     const get=f=>{for(const[k,fl]of Object.entries(cols))if(fl===f)return r[+k];return'';};
-    const musteri=String(get('musteri')??'').trim();
+    const musteri=cleanText(get('musteri'));
     const tarih=parseDate(get('tarih'));
     if(!musteri&&!tarih)continue;
     const par=toNum(get('parsiyelM3')),top=toNum(get('toplamM3'));
-    out.push(hydrate({musteri,bolum:String(get('bolum')??'').trim()||'Diğer',
-      kategori:String(get('kategori')??'').trim(),
-      tip:String(get('sevkiyatTipi')??'').trim()||'Bilinmiyor',
+    out.push(hydrate({musteri,bolum:cleanText(get('bolum'))||'Diğer',
+      kategori:cleanText(get('kategori')),
+      tip:cleanText(get('sevkiyatTipi'))||'Bilinmiyor',
       adet:toNum(get('adet'))||0,tarih,
       parsiyelM3:par,toplamM3:top,m3:top||par||0}));
   }
@@ -595,7 +647,7 @@ function autoParse(){
   let combined=[];const used=[];let dups=0;
   WB.SheetNames.forEach(name=>{
     const ws=WB.Sheets[name];if(!ws||!ws['!ref'])return;
-    if(norm(name).includes('hedef'))return; /* hedef sayfası ayrı işlenir */
+    if(norm(name).includes('hedef'))return;
     const aoa=sheetAoa(name);
     const det=detectHeader(aoa);
     if(det.idx<0)return;
@@ -616,7 +668,6 @@ function autoParse(){
   });
   return{used,rows:combined,dups};
 }
-/* HEDEF sayfası içeri alma */
 function importTargetsFromWb(wb){
   let imported=0;
   wb.SheetNames.forEach(name=>{
@@ -668,6 +719,8 @@ async function applyRows(rows,sheetLabel,fileName){
     const id=(pool&&pool.length)?pool.shift():uuid();
     return{...r,id};
   });
+  const{report,total}=canonicalizeRows(mapped);
+  if(total)console.log('[Sevkiyat] Yüklenen dosyada birleştirilen etiket varyantları:',report);
   if($('merge').checked){
     const consumed=new Set(mapped.map(r=>r.id));
     DATA=[...DATA.filter(r=>!consumed.has(r.id)),...mapped];
@@ -680,8 +733,9 @@ async function applyRows(rows,sheetLabel,fileName){
   $('statLine').innerHTML=`✅ <b>${esc(fileName)}</b> · sayfa(lar): ${esc(sheetLabel)}<br>`+
     `📄 ${nf0.format(rows.length)} satır işlendi · toplam <b>${nf0.format(DATA.length)}</b> kayıt<br>`+
     `📅 Tarih aralığı: <b>${st.range}</b>`+
+    (total?` · 🔤 ${total} kayıtta etiket standartlaştırıldı`:'')+
     (st.noDate?` · <span style="color:#dc2626">${nf0.format(st.noDate)} satırda tarih okunamadı</span>`:'');
-  toast(`${rows.length} kayıt yüklendi · tarih aralığı: ${st.range}`);
+  toast(`${rows.length} kayıt yüklendi · tarih aralığı: ${st.range}`+(total?` · ${total} etiket düzeltildi`:''));
 }
 function handleFile(file){
   if(!file)return;
@@ -766,6 +820,31 @@ function rawCellDesc(v){
   }
   return 'Metin → "'+String(v)+'"';
 }
+/* Dosyadaki yazım farklarını (görünmez karakter dahil) gösterir */
+function labelAudit(aoa,det){
+  if(det.idx<0)return'';
+  const get=f=>{for(const[k,fl]of Object.entries(det.cols))if(fl===f)return +k;return -1;};
+  const fields=[['musteri','Müşteri'],['bolum','Bölüm'],['kategori','Kategori'],['sevkiyatTipi','Sevkiyat Tipi']];
+  let html='';
+  fields.forEach(([f,lab])=>{
+    const c=get(f);if(c<0)return;
+    const variants=new Map();
+    for(let i=det.idx+1;i<aoa.length;i++){
+      const r=aoa[i];if(!r||r.every(x=>x===''||x==null))continue;
+      const raw=String(r[c]??'').trim();if(!raw)continue;
+      const k=canonicalKey(raw);
+      if(!variants.has(k))variants.set(k,new Map());
+      const m=variants.get(k);m.set(raw,(m.get(raw)||0)+1);
+    }
+    variants.forEach((m)=>{
+      if(m.size<=1)return;
+      html+=`<p class="hint">⚠️ <b>${lab}</b> kolonunda yazım farkı: `;
+      html+=[...m.entries()].map(([v,n])=>`"${esc(v)}" (${n})`).join(' · ');
+      html+=' — yüklemede otomatik birleştirilir.</p>';
+    });
+  });
+  return html;
+}
 function runDiag(){
   if(!WB){toast('Önce bir Excel dosyası yükleyin','error');return;}
   let html='';
@@ -778,6 +857,7 @@ function runDiag(){
     const colsTxt=Object.entries(det.cols).map(([k,v])=>colLetter(+k)+' → '+(FIELD_DEFS.find(f=>f.key===v)?.label||v)).join(' · ')||'yok';
     html+=`<p class="hint">Başlık satırı: ${det.idx+1} · Eşleşen kolonlar: ${esc(colsTxt)}</p>`;
     if(!Object.values(det.cols).includes('tarih'))html+='<p class="hint">⚠️ Tarih kolonu eşleşmedi!</p>';
+    html+=labelAudit(aoa,det);
     const dCol=Object.entries(det.cols).find(([k,v])=>v==='tarih');
     let shown=0,bad=0;
     if(dCol){
@@ -828,7 +908,6 @@ function getFiltered(){
     return true;
   });
 }
-/* Kayıtlı filtre setleri */
 function renderPresets(){
   const sel=$('presetSel');
   sel.innerHTML=`<option value="">— seç —</option>`+PRESETS.map((p,i)=>`<option value="${i}">${esc(p.name)}</option>`).join('');
@@ -862,7 +941,6 @@ function monthlyAgg(rows){
   });
   return[...map.values()].sort((a,b)=>a.ym<b.ym?-1:1);
 }
-/* Basit doğrusal regresyon */
 function linreg(ys){
   const n=ys.length;if(n<2)return x=>ys[n-1]||0;
   let sx=0,sy=0,sxy=0,sxx=0;
@@ -905,16 +983,14 @@ function renderCharts(rows){
   charts.daily=new Chart($('chDaily'),{data:{labels:daily.map(x=>x.k),datasets:[
     {type:'bar',label:'Araç',data:daily.map(x=>x.adet),backgroundColor:'#7c3aed',borderRadius:4,yAxisID:'y'},
     {type:'line',label:'m³',data:daily.map(x=>x.m3),borderColor:'#d97706',backgroundColor:'#d97706',tension:.3,yAxisID:'y1'}]},options:dualAxisOpts()});
-  /* Haftalık + 4 haftalık tahmin */
   const weekly=weeklyAgg(dated).sort((a,b)=>a.yil-b.yil||a.hafta-b.hafta);
   const FC=4;
   let fLabels=[],fV=[],fM=[];
   if(weekly.length>=4){
     const wV=weekly.map(w=>w.adet),wM=weekly.map(w=>w.m3);
     const tailV=wV.slice(-8),tailM=wM.slice(-8);
-    const regV=linreg(tailV),regM=linreg(tailM);
-    const nV=tailV.map((_,i)=>i),n=tailV.length;
     const regV2=linreg(tailV),regM2=linreg(tailM);
+    const n=tailV.length;
     let lastDate=new Date(Math.max(...dated.map(r=>r.tarih.getTime())));
     fV=Array(weekly.length).fill(null).concat(Array.from({length:FC},(_,i)=>Math.max(0,Math.round(regV2(n+i)))));
     fM=Array(weekly.length).fill(null).concat(Array.from({length:FC},(_,i)=>Math.max(0,Math.round(regM2(n+i)))));
@@ -1366,9 +1442,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   $('btnReset').onclick=()=>{FILTER_IDS.forEach(id=>$(id).value='all');$('fFrom').value='';$('fTo').value='';$('fSearch').value='';renderAll();};
   [...FILTER_IDS,'fFrom','fTo'].forEach(id=>$(id).addEventListener('change',renderAll));
   $('fSearch').addEventListener('input',renderAll);
-  // Sekmeler
   document.querySelectorAll('#tabbar button').forEach(b=>b.addEventListener('click',()=>setTab(b.dataset.tab)));
-  // Preset
   renderPresets();
   $('btnPresetSave').onclick=()=>{
     const name=$('presetName').value.trim();
@@ -1387,16 +1461,12 @@ document.addEventListener('DOMContentLoaded',()=>{
     if($('presetSel').value===''){toast('Silinecek set seçin','error');return;}
     PRESETS.splice(i,1);saveAllPresets();renderPresets();toast('Set silindi');
   };
-  // Isı haritası yıl seçici
   $('hmYear').addEventListener('change',()=>{HM_YEAR=+$('hmYear').value;renderHeatmap(getFiltered());});
-  // Müşteri detay kapat
   $('custClose').onclick=()=>$('custOv').classList.remove('show');
-  // Hedef editör
   $('btnTargetEdit').onclick=openTargetEditor;
   $('tgtYear').addEventListener('change',buildTgtTable);
   $('tgtSave').onclick=saveTargetsFromEditor;
   $('tgtClose').onclick=()=>$('targetOv').classList.remove('show');
-  // Mapper
   $('mapSheet').addEventListener('change',()=>{$('mapHeadRow').value=Math.max(1,mapDefaultHeadRow[$('mapSheet').value]||1);buildMapFields();});
   $('mapHeadRow').addEventListener('change',buildMapFields);
   $('mapCancel').onclick=()=>$('mapperOv').classList.remove('show');
@@ -1406,7 +1476,6 @@ document.addEventListener('DOMContentLoaded',()=>{
     $('mapperOv').classList.remove('show');
     applyRows(rows,$('mapSheet').value,'manuel eşleştirme');
   };
-  // Cloud
   $('btnCloud').onclick=()=>{
     $('cfgUrl').value=CFG.url;$('cfgKey').value=CFG.key;$('cfgTable').value=CFG.table;
     $('cfgStatus').textContent=hasCloud()?'✅ Şu anda buluta bağlı: '+CFG.url:'💾 Şu anda yalnızca tarayıcı içi kayıt (IndexedDB) kullanılıyor.';
@@ -1436,7 +1505,6 @@ document.addEventListener('DOMContentLoaded',()=>{
   };
   $('cfgDisconnect').onclick=()=>{localStorage.removeItem(CFG_LS);CFG={url:'',key:'',table:'sevkiyat'};
     setPill('local');$('cfgStatus').textContent='💾 Bağlantı kesildi.';};
-  // Dropzone
   const dz=$('dropzone');
   dz.addEventListener('click',()=>$('fileInput').click());
   dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over');});

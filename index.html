@@ -172,7 +172,7 @@ select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
     <div class="dropzone" id="dropzone">
       <div class="big">📥</div>
       <b>Excel dosyasını buraya sürükleyin veya tıklayın</b>
-      <span>Kayıt kimliği içerikten üretilir → aynı dosyayı tekrar yüklemek çoğaltmaz, günceller · "HEDEF" sayfası varsa hedefler alınır</span>
+      <span>Kayıt kimliği içerikten üretilir → aynı dosyayı tekrar yüklemek çoğaltmaz · "HEDEF" sayfası varsa hedefler alınır</span>
     </div>
     <div class="upload-side">
       <label class="chk"><input type="checkbox" id="merge"> Mevcut verilerle <b>&nbsp;birleştir</b> (kapalıysa yeni yükleme eski veriyi TAMAMEN değiştirir)</label>
@@ -412,7 +412,7 @@ select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
 <div class="modal-ov" id="cloudOv">
   <div class="modal" style="max-width:680px">
     <h3>☁️ Merkezi Veritabanı (Supabase)</h3>
-    <p class="hint">⚠️ Bağlantı ayarı <b>her tarayıcıda ayrı</b> yapılır. Kayıt kimlikleri içerikten üretildiği için artık tarayıcılar arası çoğalma olmaz.</p>
+    <p class="hint">⚠️ Bağlantı ayarı <b>her tarayıcıda ayrı</b> yapılır. Kayıt kimlikleri içerikten üretildiği için tarayıcılar arası çoğalma olmaz.</p>
     <div class="map-grid">
       <div class="field"><label>Project URL</label><input type="text" id="cfgUrl" placeholder="https://xxxxx.supabase.co"></div>
       <div class="field"><label>Anon Public Key</label><input type="text" id="cfgKey" placeholder="eyJhbGciOi..."></div>
@@ -496,13 +496,7 @@ function canonicalizeRows(rows){
   return{report,total};
 }
 
-/* ================= DETERMİNİSTİK KAYIT KİMLİĞİ =================
-   Eski sürüm rastgele UUID üretiyordu → aynı sevkiyat farklı tarayıcılarda
-   farklı ID alıyor, birleştirme çoğaltıyordu. Artık kimlik İÇERİKTEN üretilir:
-   bk  = müşteri|bölüm|tip|tarih|adet   (normalize edilmiş)
-   id  = bk + '#' + aynı gruptaki sıra (0,1,2...)
-   Aynı sevkiyat her yerde AYNI id'yi alır → birleştirme asla çoğaltmaz.
-   m3'e göre sıralama sayesinde id tamamen içerikteki saf fonksiyondur. */
+/* ================= DETERMİNİSTİK KAYIT KİMLİĞİ ================= */
 function bkBase(r){
   return [norm(r.musteri),norm(r.bolum),norm(r.tip),r.tarihStr||'',r.adet||0].join('|');
 }
@@ -592,7 +586,34 @@ let TARGETS={};
 const CAP_DEF={'40 HC':68,'KOMPLE TIR':90};
 let CAPS={...CAP_DEF};
 let PRESETS=[];
-function killChart(k){if(charts[k]){charts[k].destroy();delete charts[k];}}
+
+/* ================= GRAFİK MOTORU (çökme güvenli) =================
+   Her grafik: açık root type + açık dataset type.
+   Oluşturma başarısız olsa bile yetim canvas kilidi temizlenir. */
+function killChart(key){
+  const c=charts[key];
+  if(c){try{c.destroy();}catch(e){} delete charts[key];}
+  /* Referansımız olmayan yetim instance'ları da temizle (canvas kilidi açar) */
+  const cv=document.querySelector(`canvas[data-ckey="${key}"]`);
+  if(cv&&window.Chart){try{const g=Chart.getChart(cv);if(g){try{g.destroy();}catch(e){}}}catch(e){}}
+}
+function makeChart(key,canvasId,config){
+  const cv=$(canvasId);
+  if(!cv){console.warn('[Sevkiyat] Canvas bulunamadı:',canvasId);return null;}
+  try{
+    /* Canvas'ı kilitlemiş olabilecek TÜM eski instance'ları temizle */
+    const existing=window.Chart?Chart.getChart(cv):null;
+    if(existing){try{existing.destroy();}catch(e){}}
+    killChart(key);
+    cv.setAttribute('data-ckey',key);
+    charts[key]=new Chart(cv,config);
+    return charts[key];
+  }catch(e){
+    console.error('[Sevkiyat] Grafik oluşturulamadı ('+canvasId+'):',e);
+    try{const g=window.Chart?Chart.getChart(cv):null;if(g){try{g.destroy();}catch(e2){}}}catch(e2){}
+    return null;
+  }
+}
 
 /* ================= IndexedDB ================= */
 function idbOpen(){return new Promise((res,rej)=>{const r=indexedDB.open('sevkiyat_db',1);
@@ -702,18 +723,14 @@ async function initStorage(){
     try{cloud=(await cloudLoadAll()).map(hydrate);}
     catch(e){LAST_SAVE_ERR=e.message;setPill('err');toast('Buluta erişilemedi, yerel veri kullanılıyor: '+e.message,'error');}
   }
-  /* ── Tek normalizasyon hattı: etiket → kimlik → içerik-temizliği ── */
   const combined=[...local,...cloud];
   canonicalizeRows(combined);
-  /* deterministik-ID'li satırlar: ID bazlı tekilleştir (tarayıcılar arası güvenli) */
   const pool=[];const seenId=new Set();const sigSeen=new Set();
   combined.forEach(r=>{
     if(!isDetId(r))return;
     if(seenId.has(r.id))return;
     seenId.add(r.id);pool.push(r);sigSeen.add(contentSig(r));
   });
-  /* eski-ID'li (uuid / eski anahtar) satırlar: içeriği zaten varsa AT (çokuşumunu iyileştir),
-     yoksa tut (meşru yeni kayıt) */
   let healed=0;
   const extras=[];
   combined.forEach(r=>{
@@ -731,7 +748,7 @@ async function initStorage(){
       try{
         await withRetry(()=>cloudSaveAll(DATA));
         if(healed||DATA.length!==cloud.length)
-          toast(`🧹 Veri normalleştirildi: ${nf0.format(cloud.length+local.length)} ham kayıt → ${nf0.format(DATA.length)} benzersiz kayıt (bulut güncellendi)`);
+          toast(`🧹 Veri normalleştirildi: ${nf0.format(cloud.length+local.length)} ham kayıt → ${nf0.format(DATA.length)} benzersiz kayıt`);
       }catch(e){LAST_SAVE_ERR=e.message;setPill('err');}
     }
     if(!LAST_SAVE_ERR)setPill('cloud');else setPill('err');
@@ -867,13 +884,9 @@ function fileStat(rows){
   return{noDate,range};
 }
 async function applyRows(incoming,sheetLabel,fileName){
-  /* Etiketleri standartlaştır (önce mevcut, sonra gelen) — kimlik bundan sonra üretilir */
   canonicalizeRows(DATA);
   canonicalizeRows(incoming);
   if($('merge').checked){
-    /* İçerik eşleşmesi: gelen satır mevcutla birebir aynıysa GÜNCELLE (yerinde değiştir),
-       değilse ekle (meşru yeni kayıt / gerçek tekrar yükleme). Kimlik deterministik
-       olduğundan aynı dosyayı tekrar yüklemek asla çoğaltmaz. */
     const sigIndex=new Map();
     DATA.forEach((r,i)=>{
       const s=contentSig(r);
@@ -1314,8 +1327,7 @@ function renderFlow(refD){
       `<td class="${net>0?'up2':(net<0?'dn2':'')}">${net>0?'+':''}${net}</td></tr>`;});
   $('tblFlow').innerHTML=html+'</tbody></table>';
   const asc=[...rowsM].reverse().slice(-18);
-  killChart('flow');
-  charts.flow=new Chart($('chFlow'),{data:{labels:asc.map(m=>ymLabel(m.ym)),datasets:[
+  makeChart('flow','chFlow',{type:'bar',data:{labels:asc.map(m=>ymLabel(m.ym)),datasets:[
     {type:'bar',label:'Yeni',data:asc.map(m=>m.yeni),backgroundColor:'#059669',borderRadius:4,stack:'s'},
     {type:'bar',label:'Kayıp',data:asc.map(m=>-m.kayip),backgroundColor:'#dc2626',borderRadius:4,stack:'s'},
     {type:'line',label:'Aktif Müşteri',data:asc.map(m=>m.aktif),borderColor:'#2563eb',borderWidth:2,tension:.3,pointRadius:2}]},
@@ -1386,8 +1398,7 @@ function renderParsiyel(){
     killChart('parM');return;
   }
   const mon=monthlyAgg(par);
-  killChart('parM');
-  charts.parM=new Chart($('chParM'),{data:{labels:mon.map(m=>ymLabel(m.ym)),datasets:[
+  makeChart('parM','chParM',{type:'bar',data:{labels:mon.map(m=>ymLabel(m.ym)),datasets:[
     {type:'bar',label:'Araç',data:mon.map(m=>m.adet),backgroundColor:'#d97706',borderRadius:4,yAxisID:'y'},
     {type:'line',label:'m³',data:mon.map(m=>m.m3),borderColor:'#059669',backgroundColor:'#059669',tension:.3,yAxisID:'y1'}]},options:dualAxisOpts()});
   const byCust=new Map();
@@ -1444,19 +1455,16 @@ function dualAxisOpts(){
 function renderCharts(rows){
   const dated=rows.filter(r=>r.tarih);
   const deps=uniq(rows.map(r=>r.bolum)).sort(),gDep=groupSum(rows,r=>r.bolum);
-  killChart('dep');
-  charts.dep=new Chart($('chDep'),{type:'bar',data:{labels:deps,datasets:[
-    {label:'Araç (Adet)',data:deps.map(d=>gDep.get(d)?.adet||0),backgroundColor:'#2563eb',borderRadius:6,yAxisID:'y'},
-    {label:'m³',data:deps.map(d=>gDep.get(d)?.m3||0),type:'line',borderColor:'#059669',backgroundColor:'#059669',tension:.3,yAxisID:'y1'}]},options:dualAxisOpts()});
+  makeChart('dep','chDep',{type:'bar',data:{labels:deps,datasets:[
+    {type:'bar',label:'Araç (Adet)',data:deps.map(d=>gDep.get(d)?.adet||0),backgroundColor:'#2563eb',borderRadius:6,yAxisID:'y'},
+    {type:'line',label:'m³',data:deps.map(d=>gDep.get(d)?.m3||0),borderColor:'#059669',backgroundColor:'#059669',tension:.3,yAxisID:'y1'}]},options:dualAxisOpts()});
   const tips=uniq(rows.map(r=>r.tip)).sort(),gTip=groupSum(rows,r=>r.tip);
-  killChart('tip');
-  charts.tip=new Chart($('chTip'),{type:'doughnut',data:{labels:tips,datasets:[
-    {data:tips.map(t=>gTip.get(t)?.adet||0),backgroundColor:PALETTE,borderWidth:2,borderColor:'#fff'}]},
+  makeChart('tip','chTip',{type:'doughnut',data:{labels:tips,datasets:[
+    {type:'doughnut',data:tips.map(t=>gTip.get(t)?.adet||0),backgroundColor:PALETTE,borderWidth:2,borderColor:'#fff'}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}});
   const daily=[...groupSum(dated,r=>r.tarihStr).entries()]
     .map(([k,o])=>({k,adet:o.adet,m3:o.m3,t:o.ref.tarih.getTime()})).sort((a,b)=>a.t-b.t);
-  killChart('daily');
-  charts.daily=new Chart($('chDaily'),{data:{labels:daily.map(x=>x.k),datasets:[
+  makeChart('daily','chDaily',{type:'bar',data:{labels:daily.map(x=>x.k),datasets:[
     {type:'bar',label:'Araç',data:daily.map(x=>x.adet),backgroundColor:'#7c3aed',borderRadius:4,yAxisID:'y'},
     {type:'line',label:'m³',data:daily.map(x=>x.m3),borderColor:'#d97706',backgroundColor:'#d97706',tension:.3,yAxisID:'y1'}]},options:dualAxisOpts()});
   const weekly=weeklyAgg(dated).sort((a,b)=>a.yil-b.yil||a.hafta-b.hafta);
@@ -1473,12 +1481,11 @@ function renderCharts(rows){
       const d=new Date(lastDate.getTime()+(i+1)*7*864e5);
       const iw=isoWeek(d);return`${iw.year}/H${iw.week}*`;}));
   }
-  killChart('week');
-  charts.week=new Chart($('chWeek'),{data:{labels:fLabels.length?fLabels:weekly.map(w=>`${w.yil}/H${w.hafta}`),datasets:[
-    {label:'Araç',data:weekly.map(w=>w.adet),backgroundColor:'#0891b2',borderRadius:5,yAxisID:'y'},
-    {label:'m³',data:weekly.map(w=>w.m3),backgroundColor:'#d97706',borderRadius:5,yAxisID:'y1'},
-    {label:'Araç Tahmin',data:fV,type:'line',borderColor:'#0891b2',borderDash:[6,4],borderWidth:2,pointRadius:0,fill:false,yAxisID:'y'},
-    {label:'m³ Tahmin',data:fM,type:'line',borderColor:'#d97706',borderDash:[6,4],borderWidth:2,pointRadius:0,fill:false,yAxisID:'y1'}]},options:dualAxisOpts()});
+  makeChart('week','chWeek',{type:'bar',data:{labels:fLabels.length?fLabels:weekly.map(w=>`${w.yil}/H${w.hafta}`),datasets:[
+    {type:'bar',label:'Araç',data:weekly.map(w=>w.adet),backgroundColor:'#0891b2',borderRadius:5,yAxisID:'y'},
+    {type:'bar',label:'m³',data:weekly.map(w=>w.m3),backgroundColor:'#d97706',borderRadius:5,yAxisID:'y1'},
+    {type:'line',label:'Araç Tahmin',data:fV,borderColor:'#0891b2',borderDash:[6,4],borderWidth:2,pointRadius:0,fill:false,yAxisID:'y'},
+    {type:'line',label:'m³ Tahmin',data:fM,borderColor:'#d97706',borderDash:[6,4],borderWidth:2,pointRadius:0,fill:false,yAxisID:'y1'}]},options:dualAxisOpts()});
 }
 function renderMatrix(rows){
   const deps=uniq(rows.map(r=>r.bolum)).sort(),tips=uniq(rows.map(r=>r.tip)).sort(),cell={};
@@ -1584,14 +1591,12 @@ function openCustomer(name,rows){
     <div class="cs"><b>${avgInt}</b><span>Ort. Yükleme Aralığı</span></div>
     <div class="cs"><b>${topDep?esc(topDep[0]):'—'}</b><span>En Çok Yüklediği Bölüm</span></div>`;
   const mon=monthlyAgg(cRows);
-  killChart('custM');
-  charts.custM=new Chart($('chCustM'),{data:{labels:mon.map(m=>ymLabel(m.ym)),datasets:[
+  makeChart('custM','chCustM',{type:'bar',data:{labels:mon.map(m=>ymLabel(m.ym)),datasets:[
     {type:'bar',label:'Araç',data:mon.map(m=>m.adet),backgroundColor:'#2563eb',borderRadius:4,yAxisID:'y'},
     {type:'line',label:'m³',data:mon.map(m=>m.m3),borderColor:'#059669',backgroundColor:'#059669',tension:.3,yAxisID:'y1'}]},options:dualAxisOpts()});
   const deps=Object.keys(depMap).sort();
-  killChart('custD');
-  charts.custD=new Chart($('chCustD'),{type:'doughnut',data:{labels:deps,datasets:[
-    {data:deps.map(d=>+depMap[d].toFixed(1)),backgroundColor:PALETTE,borderWidth:2,borderColor:'#fff'}]},
+  makeChart('custD','chCustD',{type:'doughnut',data:{labels:deps,datasets:[
+    {type:'doughnut',data:deps.map(d=>+depMap[d].toFixed(1)),backgroundColor:PALETTE,borderWidth:2,borderColor:'#fff'}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}});
   const sorted=[...cRows].sort((a,b)=>(b.tarih?.getTime()||0)-(a.tarih?.getTime()||0)).slice(0,50);
   let html=`<table class="tbl"><thead><tr><th>Tarih</th><th>Gün</th><th>Bölüm</th><th>Tip</th><th>Adet</th><th>m³</th></tr></thead><tbody>`;
@@ -1621,14 +1626,12 @@ function renderMonthly(rows){
       `<td class="${cls(momM)}">${momM==null?'—':pct(momM)}</td><td class="${cls(yoyM)}">${yoyM==null?'—':pct(yoyM)}</td></tr>`;});
   $('tblMonthly').innerHTML=html+'</tbody></table>';
   const last12=mon.slice(-12);
-  killChart('monthly');
-  charts.monthly=new Chart($('chMonthly'),{data:{labels:last12.map(m=>ymLabel(m.ym)),datasets:[
+  makeChart('monthly','chMonthly',{type:'bar',data:{labels:last12.map(m=>ymLabel(m.ym)),datasets:[
     {type:'bar',label:'Araç',data:last12.map(m=>m.adet),backgroundColor:'#2563eb',borderRadius:4,yAxisID:'y'},
     {type:'line',label:'m³',data:last12.map(m=>m.m3),borderColor:'#d97706',backgroundColor:'#d97706',tension:.3,yAxisID:'y1'}]},options:dualAxisOpts()});
   const deps=uniq(rows.filter(r=>r.tarih).map(r=>r.bolum)).sort();
-  killChart('deptShare');
-  charts.deptShare=new Chart($('chDeptShare'),{type:'bar',data:{labels:last12.map(m=>ymLabel(m.ym)),
-    datasets:deps.map((d,i)=>({label:d,data:last12.map(m=>+(m.deps[d]||0).toFixed(1)),backgroundColor:PALETTE[i%PALETTE.length]}))},
+  makeChart('deptShare','chDeptShare',{type:'bar',data:{labels:last12.map(m=>ymLabel(m.ym)),
+    datasets:deps.map((d,i)=>({type:'bar',label:d,data:last12.map(m=>+(m.deps[d]||0).toFixed(1)),backgroundColor:PALETTE[i%PALETTE.length]}))},
     options:{responsive:true,maintainAspectRatio:false,
       scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true,title:{display:true,text:'m³'}}},
       plugins:{legend:{position:'bottom',labels:{boxWidth:12}}}}});
@@ -1696,10 +1699,9 @@ function renderWeekday(rows){
   const labels=order.map(d=>GUNLER[d]);
   const avgM3=order.map(d=>agg[d]?agg[d].m3/agg[d].days.size:0);
   const avgA=order.map(d=>agg[d]?agg[d].adet/agg[d].days.size:0);
-  killChart('wd');
-  charts.wd=new Chart($('chWd'),{type:'bar',data:{labels,datasets:[
-    {label:'Ort. m³/Gün',data:avgM3.map(v=>+v.toFixed(1)),backgroundColor:'#059669',borderRadius:5,yAxisID:'y'},
-    {label:'Ort. Araç/Gün',data:avgA.map(v=>+v.toFixed(1)),backgroundColor:'#2563eb',borderRadius:5,yAxisID:'y1'}]},
+  makeChart('wd','chWd',{type:'bar',data:{labels,datasets:[
+    {type:'bar',label:'Ort. m³/Gün',data:avgM3.map(v=>+v.toFixed(1)),backgroundColor:'#059669',borderRadius:5,yAxisID:'y'},
+    {type:'bar',label:'Ort. Araç/Gün',data:avgA.map(v=>+v.toFixed(1)),backgroundColor:'#2563eb',borderRadius:5,yAxisID:'y1'}]},
     options:{responsive:true,maintainAspectRatio:false,
       scales:{y:{beginAtZero:true,title:{display:true,text:'Ort. m³'}},y1:{position:'right',beginAtZero:true,grid:{drawOnChartArea:false},title:{display:true,text:'Ort. Araç'}}},
       plugins:{legend:{labels:{boxWidth:12}}}}});
@@ -1737,10 +1739,9 @@ function renderCapacity(rows){
     const theo=o.adet*cap;
     return{tip,adet:o.adet,m3:o.m3,cap,theo,util:theo?o.m3/theo*100:0};
   }).sort((a,b)=>b.m3-a.m3);
-  killChart('cap');
-  charts.cap=new Chart($('chCap'),{type:'bar',data:{labels:list.map(x=>x.tip),datasets:[
-    {label:'Gerçek m³',data:list.map(x=>+x.m3.toFixed(1)),backgroundColor:'#059669',borderRadius:5},
-    {label:'Teorik Kapasite m³',data:list.map(x=>+x.theo.toFixed(1)),backgroundColor:'#cbd5e1',borderRadius:5}]},
+  makeChart('cap','chCap',{type:'bar',data:{labels:list.map(x=>x.tip),datasets:[
+    {type:'bar',label:'Gerçek m³',data:list.map(x=>+x.m3.toFixed(1)),backgroundColor:'#059669',borderRadius:5},
+    {type:'bar',label:'Teorik Kapasite m³',data:list.map(x=>+x.theo.toFixed(1)),backgroundColor:'#cbd5e1',borderRadius:5}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}},
       scales:{y:{beginAtZero:true,title:{display:true,text:'m³'}}}}});
   let html=`<table class="tbl"><thead><tr><th>Sevkiyat Tipi</th><th>Kapasite (m³/araç)</th><th>Araç</th><th>Gerçek m³</th><th>Teorik m³</th><th>Doluluk</th><th></th></tr></thead><tbody>`;
@@ -1811,21 +1812,21 @@ async function saveTargetsFromEditor(){
 function showRenderError(stage,e){
   const b=$('errBanner');
   b.style.display='';
-  b.textContent=`⚠️ "${stage}" bölümü çizilemedi: ${e.message} — diğer bölümler etkilenmedi. Detay için F12 → Console.`;
+  b.textContent=`⚠️ "${stage}" bölümü çizilemedi: ${e.message} — diğer bölümler etkilenmedi. Detay: F12 → Console.`;
   console.error('[Sevkiyat] '+stage+' hatası:',e);
 }
 function safe(stage,fn,...args){
   try{fn(...args);}catch(e){showRenderError(stage,e);}
 }
 function renderTab(tab){
-  if(tab==='yasam'){renderLifecycle();return;}
-  if(tab==='parsiyel'){renderParsiyel();return;}
+  if(tab==='yasam'){safe('Yaşam Döngüsü',renderLifecycle);return;}
+  if(tab==='parsiyel'){safe('Parsiyel',renderParsiyel);return;}
   const rows=getFiltered();
-  if(tab==='genel')renderGenel(rows);
-  else if(tab==='mus')renderCustomers(rows);
-  else if(tab==='aylik')renderAylik(rows);
-  else if(tab==='kap')renderCapacity(rows);
-  else if(tab==='hedef')renderTargets(rows);
+  if(tab==='genel')safe('Genel grafikler',renderCharts,rows),safe('Matris',renderMatrix,rows);
+  else if(tab==='mus')safe('Müşteriler',renderCustomers,rows);
+  else if(tab==='aylik')safe('Aylık',renderAylik,rows);
+  else if(tab==='kap')safe('Kapasite',renderCapacity,rows);
+  else if(tab==='hedef')safe('Hedefler',renderTargets,rows);
 }
 function setTab(tab){
   TAB=tab;
@@ -1835,7 +1836,6 @@ function setTab(tab){
 }
 function renderAll(){
   const rows=getFiltered();
-  /* Raporlar EN ÖNCE — başka bir bölüm hata sewse bile asla boş kalmaz */
   safe('Detay Raporları',renderReports,rows);
   safe('KPI',renderKPIs,rows);
   safe('Sekme: '+TAB,renderTab,TAB);

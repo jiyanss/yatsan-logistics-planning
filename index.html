@@ -56,6 +56,7 @@ select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
 .presets{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
 .presets input{max-width:170px}
 #resultCount{color:var(--muted);font-size:12.5px}
+#errBanner{margin:0}
 .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
 .kpi{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 18px;display:flex;align-items:center;gap:14px}
 .kpi .ic{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;color:#fff;flex-shrink:0}
@@ -165,11 +166,13 @@ select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
 <main class="container">
   <input type="file" id="fileInput" accept=".xlsx,.xlsm,.xls,.csv" hidden>
 
+  <div class="alert-row err" id="errBanner" style="display:none"></div>
+
   <section class="card upload-card" id="uploadCard">
     <div class="dropzone" id="dropzone">
       <div class="big">📥</div>
       <b>Excel dosyasını buraya sürükleyin veya tıklayın</b>
-      <span>Yüklemeden önce üstteki rozeti kontrol edin: <b>☁️ Bulut</b> yazmalı. Etiketler otomatik standartlaştırılır.</span>
+      <span>Kayıt kimliği içerikten üretilir → aynı dosyayı tekrar yüklemek çoğaltmaz, günceller · "HEDEF" sayfası varsa hedefler alınır</span>
     </div>
     <div class="upload-side">
       <label class="chk"><input type="checkbox" id="merge"> Mevcut verilerle <b>&nbsp;birleştir</b> (kapalıysa yeni yükleme eski veriyi TAMAMEN değiştirir)</label>
@@ -217,7 +220,6 @@ select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
     <div class="kpi"><div class="ic" style="background:var(--purple)">📆</div><div><div class="val" id="kDays">0</div><div class="lbl">Yükleme Yapılan Gün</div></div></div>
   </section>
 
-  <!-- ═══ UYARI PANELİ (her sekmede görünür) ═══ -->
   <section class="card" id="alertCard">
     <h3>🚨 Uyarı Paneli <span style="font-weight:400;color:var(--muted);font-size:12px">— referans: verideki son yükleme günü</span></h3>
     <div id="alertBox"></div>
@@ -238,7 +240,7 @@ select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
   <div class="tabpage" id="tab-mus" style="display:none">
     <section class="card">
       <h3>👥 Müşteri Analizi + ABC Sınıflandırması</h3>
-      <p class="hint">m³ hacmine göre sıralı. <b>A</b>: toplam hacmin ~%80'i · <b>B</b>: sonraki ~%15'i · <b>C</b>: son ~%5'i. Detay için müşteri adına tıklayın.</p>
+      <p class="hint">m³ hacmine göre sıralı. <b>A</b>: ~%80 · <b>B</b>: ~%15 · <b>C</b>: ~%5. Detay için satıra tıklayın.</p>
       <div class="tbl-wrap tall" id="tblCust"></div>
     </section>
   </div>
@@ -247,31 +249,30 @@ select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
   <div class="tabpage" id="tab-yasam" style="display:none">
     <section class="card">
       <h3>🚨 Riskli Müşteriler</h3>
-      <p class="hint" id="riskHint">Düzenli yükleyip ritminden çıkan müşteriler. Durum: <span class="badge ok">Ritimde</span> gap ≤ ort. aralık ×1,3 · <span class="badge watch">İzle</span> ≤ ×1,8 · <span class="badge risk">Riskli</span> üstü (≥3 yükleme şartı). A/B sınıfı önce sıralanır.</p>
+      <p class="hint" id="riskHint"></p>
       <div class="tbl-wrap" id="tblRisk"></div>
     </section>
     <section class="card">
       <h3>📈 Müşteri Büyüme Matrisi (YoY)
         <select id="ymYear" style="width:auto;display:inline-block;margin-left:8px;padding:4px 8px;font-size:12.5px"></select>
       </h3>
-      <p class="hint">Seçili yıl, bir önceki yıl ile karşılaştırılır. Δ≥%10 Büyüyen, Δ≤%10 Küçülen; önceki yıl verisi yoksa Yeni, bu yıl verisi yoksa Kayıp. <b>Küçülen A-sınıfı müşteri en kritik ticari sinyaldir.</b></p>
+      <p class="hint">Δ≥%10 Büyüyen, Δ≤%10 Küçülen; önceki yıl verisi yoksa Yeni, bu yıl verisi yoksa Kayıp. <b>Küçülen A-sınıfı müşteri en kritik ticari sinyaldir.</b></p>
       <div id="growthChips" style="margin-bottom:8px"></div>
       <div class="tbl-wrap tall" id="tblGrowth"></div>
     </section>
     <section class="card">
       <h3>🆕↩️ Yeni / Kayıp Müşteri Akışı</h3>
-      <p class="hint">Yeni: o ay ilk kez yükleyen müşteri. Kayıp: son yüklemesi o ay olan ve 45+ gündür geri gelmeyen müşteri.</p>
+      <p class="hint">Yeni: o ay ilk kez yükleyen. Kayıp: son yüklemesi o ay olan ve 45+ gündür gelmeyen.</p>
       <div class="chart-card"><div class="ch-wrap"><canvas id="chFlow"></canvas></div></div>
       <div class="tbl-wrap" style="margin-top:12px" id="tblFlow"></div>
     </section>
     <section class="card">
       <h3>⏱ Yükleme Ritmi (tüm düzenli müşteriler)</h3>
-      <p class="hint">≥2 yükleme yapan tüm müşteriler. Ritim: son yüklemeden bu yana geçen süre vs müşterinin kendi ortalama yükleme aralığı.</p>
+      <p class="hint">≥2 yükleme yapan müşteriler: son yüklemeden geçen süre vs kendi ortalama aralığı.</p>
       <div class="tbl-wrap tall" id="tblRhythm"></div>
     </section>
     <section class="card">
       <h3>🏭 Müşteri × Bölüm Matrisi (ilk 25 müşteri, m³)</h3>
-      <p class="hint">Kanal bağımlılığı: hangi müşteri hangi EXPORT kanalından akıyor.</p>
       <div class="tbl-wrap" id="tblCustDep"></div>
     </section>
   </div>
@@ -282,10 +283,9 @@ select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
       <div class="card chart-card"><h3>📆 Son 12 Ay (araç / m³)</h3><div class="ch-wrap"><canvas id="chMonthly"></canvas></div></div>
       <div class="card chart-card"><h3>📊 Bölüm Payı Trendi (m³, yığın)</h3><div class="ch-wrap"><canvas id="chDeptShare"></canvas></div></div>
     </section>
-    <section class="card"><h3>🔄 Aylık Karşılaştırma (MoM / YoY)</h3><p class="hint">MoM: bir önceki aya göre · YoY: geçen yılın aynı ayına göre değişim %</p><div class="tbl-wrap" id="tblMonthly"></div></section>
+    <section class="card"><h3>🔄 Aylık Karşılaştırma (MoM / YoY)</h3><div class="tbl-wrap" id="tblMonthly"></div></section>
     <section class="card">
       <h3>🔥 Takvim Isı Haritası <select id="hmYear" style="width:auto;display:inline-block;margin-left:8px;padding:4px 8px;font-size:12.5px"></select></h3>
-      <p class="hint">Her kare bir gün; koyuluk o gün yüklenen m³'ü gösterir.</p>
       <div class="hm-wrap"><div class="hm-months" id="hmMonths"></div><div class="hm-grid" id="hmGrid"></div></div>
       <div class="hm-legend"><span>Az</span><i style="background:#eef2f7"></i><i style="background:#bbf7d0"></i><i style="background:#4ade80"></i><i style="background:#16a34a"></i><i style="background:#166534"></i><span>Çok</span></div>
     </section>
@@ -310,7 +310,7 @@ select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
     </section>
     <section class="card">
       <h3>🔗 Konsolidasyon Fırsatları</h3>
-      <p class="hint" id="consHint">Aynı hafta içindeki 2+ parsiyel yükleme birleştirilebilirse tasarruf potansiyeli. Tahmin: KOMPLE TIR kapasitesi varsayımıyla hesaplanır — kaba göstergedir.</p>
+      <p class="hint" id="consHint"></p>
       <div class="tbl-wrap" id="tblParCons"></div>
     </section>
   </div>
@@ -319,7 +319,7 @@ select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
   <div class="tabpage" id="tab-kap" style="display:none">
     <section class="card">
       <h3>📐 Kapasite Doluluk Oranı</h3>
-      <p class="hint">Teorik kapasiteleri aşağıdan düzenleyebilirsiniz (tarayıcınıza kaydedilir). Doluluk = gerçekleşen m³ ÷ (araç × kapasite).</p>
+      <p class="hint">Kapasiteleri düzenleyebilirsiniz (tarayıcıya kaydedilir). Doluluk = m³ ÷ (araç × kapasite).</p>
       <div id="capInputs" style="max-width:460px;margin-bottom:14px"></div>
       <div class="ch-wrap tall"><canvas id="chCap"></canvas></div>
       <div class="tbl-wrap" style="margin-top:12px" id="tblCap"></div>
@@ -330,7 +330,7 @@ select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
   <div class="tabpage" id="tab-hedef" style="display:none">
     <section class="card">
       <h3>🎯 Hedef vs Gerçekleşen (Aylık)</h3>
-      <p class="hint">Hedefleri "🎯 Düzenle" ile girin veya Excel'e <b>HEDEF</b> sayfası ekleyin (kolonlar: AY · ARAÇ HEDEF · M3 HEDEF, AY formatı: 2026-01).</p>
+      <p class="hint">Hedefleri "🎯 Düzenle" ile girin veya Excel'e <b>HEDEF</b> sayfası ekleyin (AY · ARAÇ HEDEF · M3 HEDEF, AY: 2026-01).</p>
       <div style="margin-bottom:12px"><button class="btn btn-outline" id="btnTargetEdit">🎯 Hedefleri Düzenle</button></div>
       <div class="tbl-wrap" id="tblTargets"></div>
     </section>
@@ -399,7 +399,6 @@ select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
 <div class="modal-ov" id="targetOv">
   <div class="modal" style="max-width:560px">
     <h3>🎯 Aylık Hedefler</h3>
-    <p class="hint">Yıl seçin, araç ve m³ hedeflerini girin, kaydedin.</p>
     <div class="field" style="max-width:180px;margin-bottom:10px"><label>Yıl</label><select id="tgtYear"></select></div>
     <div class="tbl-wrap" style="max-height:340px;overflow-y:auto"><table class="tbl" id="tgtTable"></table></div>
     <div class="map-actions">
@@ -413,7 +412,7 @@ select:focus,input:focus{outline:2px solid #bfdbfe;border-color:var(--primary)}
 <div class="modal-ov" id="cloudOv">
   <div class="modal" style="max-width:680px">
     <h3>☁️ Merkezi Veritabanı (Supabase)</h3>
-    <p class="hint">⚠️ Bağlantı ayarı <b>her tarayıcıda ayrı</b> yapılır.</p>
+    <p class="hint">⚠️ Bağlantı ayarı <b>her tarayıcıda ayrı</b> yapılır. Kayıt kimlikleri içerikten üretildiği için artık tarayıcılar arası çoğalma olmaz.</p>
     <div class="map-grid">
       <div class="field"><label>Project URL</label><input type="text" id="cfgUrl" placeholder="https://xxxxx.supabase.co"></div>
       <div class="field"><label>Anon Public Key</label><input type="text" id="cfgKey" placeholder="eyJhbGciOi..."></div>
@@ -448,10 +447,6 @@ const isoDay=d=>`${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}
 const ymOf=d=>`${d.getFullYear()}-${pad2(d.getMonth()+1)}`;
 const ymLabel=ym=>{const[y,m]=ym.split('-');return AYLAR[+m-1]+' '+y;};
 function colLetter(i){let s='';i++;while(i>0){const m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=Math.floor((i-1)/26);}return s;}
-function uuid(){
-  if(window.crypto&&crypto.randomUUID)return crypto.randomUUID();
-  return 'id-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,10)+Math.random().toString(36).slice(2,6);
-}
 function norm(s){return String(s??'')
   .replace(/İ/g,'i').replace(/I/g,'i').replace(/Ş/g,'s').replace(/Ğ/g,'g').replace(/Ü/g,'u').replace(/Ö/g,'o').replace(/Ç/g,'c')
   .replace(/ı/g,'i').replace(/ş/g,'s').replace(/ğ/g,'g').replace(/ü/g,'u').replace(/ö/g,'o').replace(/ç/g,'c')
@@ -495,11 +490,45 @@ function canonicalizeRows(rows){
         if(canonicalKey(String(r[f]??''))===k)r[f]=best;
       });
       report[f]=report[f]||[];
-      variants.forEach((n,v)=>{if(v!==best){report[f].push(`"${v}" → "${best}" (${n} kayıt)`);total+=n;}});
+      variants.forEach((n,v)=>{if(v!==best){report[f].push(`"${v}" → "${best}" (${n})`);total+=n;}});
     });
   });
   return{report,total};
 }
+
+/* ================= DETERMİNİSTİK KAYIT KİMLİĞİ =================
+   Eski sürüm rastgele UUID üretiyordu → aynı sevkiyat farklı tarayıcılarda
+   farklı ID alıyor, birleştirme çoğaltıyordu. Artık kimlik İÇERİKTEN üretilir:
+   bk  = müşteri|bölüm|tip|tarih|adet   (normalize edilmiş)
+   id  = bk + '#' + aynı gruptaki sıra (0,1,2...)
+   Aynı sevkiyat her yerde AYNI id'yi alır → birleştirme asla çoğaltmaz.
+   m3'e göre sıralama sayesinde id tamamen içerikteki saf fonksiyondur. */
+function bkBase(r){
+  return [norm(r.musteri),norm(r.bolum),norm(r.tip),r.tarihStr||'',r.adet||0].join('|');
+}
+function contentSig(r){
+  return [bkBase(r),r.kategori||'',r.parsiyelM3||0,r.toplamM3||0,r.m3||0].join('¦');
+}
+function reassignIds(rows){
+  const groups=new Map();
+  rows.forEach((r,i)=>{
+    const k=bkBase(r);
+    if(!groups.has(k))groups.set(k,[]);
+    groups.get(k).push(i);
+  });
+  groups.forEach((idxs,k)=>{
+    if(idxs.length>1){
+      idxs.sort((a,b)=>{
+        const A=rows[a],B=rows[b];
+        return (A.m3||0)-(B.m3||0)||(A.parsiyelM3||0)-(B.parsiyelM3||0)||
+               (A.toplamM3||0)-(B.toplamM3||0)||String(A.kategori||'').localeCompare(String(B.kategori||''));
+      });
+    }
+    idxs.forEach((ri,j)=>{rows[ri].id=k+'#'+j;});
+  });
+  return rows;
+}
+const isDetId=r=>typeof r.id==='string'&&r.id.startsWith(bkBase(r)+'#');
 
 /* ================= Tarih çözümleme — SAAT DİLİMSİZ ================= */
 const MONTHS_TR={ocak:1,subat:2,mart:3,nisan:4,mayis:5,haziran:6,temmuz:7,agustos:8,eylul:9,ekim:10,kasim:11,aralik:12};
@@ -554,10 +583,8 @@ function hydrate(r){
   r.yil=r.tarih?r.tarih.getFullYear():'';
   r.hafta=r.tarih?isoWeek(r.tarih).week:0;
   r.gun=r.tarih?GUNLER[r.tarih.getDay()]:'';
-  if(!r.id)r.id=uuid();
   return r;
 }
-const keyOf=r=>[r.musteri,r.bolum,r.tip,r.tarihStr,r.adet].join('|');
 
 /* ================= Durum ================= */
 let DATA=[],charts={},TAB='genel',HM_YEAR=null,WB=null,GROWTH_YEAR=null;
@@ -595,7 +622,7 @@ async function readErr(r,what){
   }catch(e){}
   return new Error(msg);
 }
-const toDb=r=>({kayit_key:r.id||uuid(),musteri:r.musteri,bolum:r.bolum,kategori:r.kategori||'',tip:r.tip,
+const toDb=r=>({kayit_key:r.id,musteri:r.musteri,bolum:r.bolum,kategori:r.kategori||'',tip:r.tip,
   adet:r.adet||0,tarih:r.tarih?isoDay(r.tarih):null,tarih_str:r.tarihStr||'',
   parsiyel_m3:r.parsiyelM3||0,toplam_m3:r.toplamM3||0,m3:r.m3||0,yil:r.yil||null,hafta:r.hafta||null,gun:r.gun||''});
 const fromDb=x=>hydrate({id:x.kayit_key,musteri:x.musteri,bolum:x.bolum,kategori:x.kategori||'',tip:x.tip||'Bilinmiyor',
@@ -627,17 +654,10 @@ async function cloudSaveAll(rows){
   const del=await fetch(`${base()}/rest/v1/${CFG.table}?kayit_key=not.is.null`,
     {method:'DELETE',headers:cloudHeaders({'Prefer':'return=minimal'})});
   if(!del.ok)throw await readErr(del,'Temizleme hatası');
-  const seen=new Set();
-  const payload=rows.map(r=>{
-    let id=r.id;
-    if(!id||seen.has(id)){do{id=uuid();}while(seen.has(id));}
-    seen.add(id);
-    return toDb({...r,id});
-  });
-  for(let i=0;i<payload.length;i+=200){
+  for(let i=0;i<rows.length;i+=200){
     const r=await fetch(`${base()}/rest/v1/${CFG.table}`,
       {method:'POST',headers:cloudHeaders({'Prefer':'resolution=merge-duplicates,return=minimal'}),
-       body:JSON.stringify(payload.slice(i,i+200))});
+       body:JSON.stringify(rows.slice(i,i+200).map(toDb))});
     if(!r.ok)throw await readErr(r,'Yazma hatası');
   }
 }
@@ -662,7 +682,7 @@ async function saveAll(){
     }else{LAST_SAVE_ERR='';setPill('local');}
   }catch(e){
     LAST_SAVE_ERR=e.message;setPill('err');
-    toast('Buluta kaydedilemedi: '+e.message+' — veriler bu tarayıcıda güvende; ☁️ Bağlantı → ⬆ Buluta Zorla Yükle kullanın.','error');
+    toast('Buluta kaydedilemedi: '+e.message+' — veriler bu tarayıcıda güvende; ☁️ Bağlantı → ⬆ Buluta Zorla Yükle.','error');
   }
   SAVING=false;
   if(SAVE_QUEUED){SAVE_QUEUED=false;saveAll();}
@@ -675,44 +695,57 @@ async function initStorage(){
   try{const o=JSON.parse(localStorage.getItem('sevkiyat_dashboard_v1'));
     if(o?.rows?.length&&!await idbGet('rows')){await idbSet('rows',o.rows.map(hydrate));localStorage.removeItem('sevkiyat_dashboard_v1');}
   }catch(e){}
-  const local=((await idbGet('rows'))||[]).map(hydrate);
-  DATA=local;
+  let local=((await idbGet('rows'))||[]).map(hydrate);
+  let cloud=[];
   if(hasCloud()){
     setPill('saving');
-    try{
-      const cloud=await cloudLoadAll();
-      if(!cloud.length){
-        if(local.length)await withRetry(()=>cloudSaveAll(local));
-        DATA=local;
-      }else{
-        const map=new Map();
-        cloud.forEach(r=>map.set(r.id,r));
-        local.forEach(r=>{if(!map.has(r.id))map.set(r.id,r);});
-        const merged=[...map.values()];
-        DATA=merged;
-        if(merged.length!==cloud.length){
-          await withRetry(()=>cloudSaveAll(merged));
-          toast(`🔗 Bulut ile yerel veriler birleştirildi (${merged.length} kayıt)`);
-        }
-      }
-      LAST_SAVE_ERR='';setPill('cloud');
-    }catch(e){
-      LAST_SAVE_ERR=e.message;setPill('err');
-      toast('Buluta erişilemedi, yerel veri kullanılıyor: '+e.message,'error');
+    try{cloud=(await cloudLoadAll()).map(hydrate);}
+    catch(e){LAST_SAVE_ERR=e.message;setPill('err');toast('Buluta erişilemedi, yerel veri kullanılıyor: '+e.message,'error');}
+  }
+  /* ── Tek normalizasyon hattı: etiket → kimlik → içerik-temizliği ── */
+  const combined=[...local,...cloud];
+  canonicalizeRows(combined);
+  /* deterministik-ID'li satırlar: ID bazlı tekilleştir (tarayıcılar arası güvenli) */
+  const pool=[];const seenId=new Set();const sigSeen=new Set();
+  combined.forEach(r=>{
+    if(!isDetId(r))return;
+    if(seenId.has(r.id))return;
+    seenId.add(r.id);pool.push(r);sigSeen.add(contentSig(r));
+  });
+  /* eski-ID'li (uuid / eski anahtar) satırlar: içeriği zaten varsa AT (çokuşumunu iyileştir),
+     yoksa tut (meşru yeni kayıt) */
+  let healed=0;
+  const extras=[];
+  combined.forEach(r=>{
+    if(isDetId(r))return;
+    if(sigSeen.has(contentSig(r))){healed++;return;}
+    extras.push(r);sigSeen.add(contentSig(r));
+  });
+  const merged=reassignIds([...pool,...extras]);
+  DATA=merged;
+  await idbSet('rows',DATA);
+  if(hasCloud()&&cloud.length){
+    const cloudIds=cloud.map(r=>r.id).sort().join('¦');
+    const newIds=DATA.map(r=>r.id).sort().join('¦');
+    if(cloudIds!==newIds){
+      try{
+        await withRetry(()=>cloudSaveAll(DATA));
+        if(healed||DATA.length!==cloud.length)
+          toast(`🧹 Veri normalleştirildi: ${nf0.format(cloud.length+local.length)} ham kayıt → ${nf0.format(DATA.length)} benzersiz kayıt (bulut güncellendi)`);
+      }catch(e){LAST_SAVE_ERR=e.message;setPill('err');}
     }
-  }else{LAST_SAVE_ERR='';setPill('local');}
-  DATA=DATA.map(hydrate);
-  const{report,total}=canonicalizeRows(DATA);
-  if(total){
-    console.log('[Sevkiyat] Birleştirilen etiket varyantları:',report);
-    await idbSet('rows',DATA);
-    if(hasCloud()){try{await withRetry(()=>cloudSaveAll(DATA));}catch(e){}}
+    if(!LAST_SAVE_ERR)setPill('cloud');else setPill('err');
+  }else{
+    setPill(hasCloud()?'cloud':'local');
+  }
+  if(DATA.length&&!cloud.length&&hasCloud()){
+    try{await withRetry(()=>cloudSaveAll(DATA));setPill('cloud');}catch(e){setPill('err');}
   }
 }
 function setPill(mode){
   const p=$('syncPill');
   if(mode==='cloud'){p.className='pill cloud';p.title='';p.textContent='☁️ Bulut · '+nf0.format(DATA.length)+' kayıt';}
-  else if(mode==='local'){p.className='pill';p.title='Supabase bağlı değil — veriler yalnızca bu tarayıcıda. Bağlanmak için ☁️ Bağlantı.';p.textContent='💾 Sadece bu tarayıcı · '+nf0.format(DATA.length)+' kayıt';}
+  else if(mode==='local'){p.className='pill';p.title='Supabase bağlı değil — veriler yalnızca bu tarayıcıda.';p.textContent='💾 Sadece bu tarayıcı · '+nf0.format(DATA.length)+' kayıt';}
   else if(mode==='saving'){p.className='pill';p.title='';p.textContent='⏳ kaydediliyor…';}
   else if(mode==='err'){p.className='pill err';p.title=LAST_SAVE_ERR;p.textContent='⚠️ Kayıt hatası (imleci burada tutun)';}
 }
@@ -765,7 +798,6 @@ function rowsFromSheet(aoa,hi,cols){
 }
 function sheetAoa(name){return XLSX.utils.sheet_to_json(WB.Sheets[name],{header:1,defval:'',raw:true});}
 function autoParse(){
-  const sig=r=>[r.musteri,r.bolum,r.kategori,r.tip,r.adet,r.tarihStr,r.parsiyelM3,r.toplamM3].join('|');
   const perSheet=new Map();
   let combined=[];const used=[];let dups=0;
   WB.SheetNames.forEach(name=>{
@@ -779,7 +811,7 @@ function autoParse(){
     used.push(name);
     console.log(`[Sevkiyat] Sayfa "${name}": ${rows.length} satır okundu`);
     rows.forEach(r=>{
-      const s=sig(r);
+      const s=contentSig(r);
       let isDup=false;
       for(const[otherName,otherSet]of perSheet){
         if(otherName!==name&&otherSet.has(s)){isDup=true;break;}
@@ -787,7 +819,7 @@ function autoParse(){
       if(isDup){dups++;return;}
       combined.push(r);
     });
-    perSheet.set(name,new Set(rows.map(sig)));
+    perSheet.set(name,new Set(rows.map(contentSig)));
   });
   return{used,rows:combined,dups};
 }
@@ -834,34 +866,53 @@ function fileStat(rows){
   }
   return{noDate,range};
 }
-async function applyRows(rows,sheetLabel,fileName){
+async function applyRows(incoming,sheetLabel,fileName){
+  /* Etiketleri standartlaştır (önce mevcut, sonra gelen) — kimlik bundan sonra üretilir */
   canonicalizeRows(DATA);
-  const pools=new Map();
-  DATA.forEach(r=>{const k=keyOf(r);if(!pools.has(k))pools.set(k,[]);pools.get(k).push(r.id);});
-  const mapped=rows.map(r=>{
-    const k=keyOf(r),pool=pools.get(k);
-    const id=(pool&&pool.length)?pool.shift():uuid();
-    return{...r,id};
-  });
-  const{report,total}=canonicalizeRows(mapped);
-  if(total)console.log('[Sevkiyat] Yüklenen dosyada birleştirilen etiket varyantları:',report);
+  canonicalizeRows(incoming);
   if($('merge').checked){
-    const consumed=new Set(mapped.map(r=>r.id));
-    DATA=[...DATA.filter(r=>!consumed.has(r.id)),...mapped];
+    /* İçerik eşleşmesi: gelen satır mevcutla birebir aynıysa GÜNCELLE (yerinde değiştir),
+       değilse ekle (meşru yeni kayıt / gerçek tekrar yükleme). Kimlik deterministik
+       olduğundan aynı dosyayı tekrar yüklemek asla çoğaltmaz. */
+    const sigIndex=new Map();
+    DATA.forEach((r,i)=>{
+      const s=contentSig(r);
+      if(!sigIndex.has(s))sigIndex.set(s,[]);
+      sigIndex.get(s).push(i);
+    });
+    const counts=new Map();
+    DATA.forEach(r=>{const k=bkBase(r);counts.set(k,(counts.get(k)||0)+1);});
+    let updated=0,added=0;
+    incoming.forEach(r=>{
+      const s=contentSig(r);
+      const arr=sigIndex.get(s);
+      if(arr&&arr.length){
+        const i=arr.shift();
+        DATA[i]={...r,id:DATA[i].id};
+        updated++;
+      }else{
+        const k=bkBase(r);
+        const idx=counts.get(k)||0;counts.set(k,idx+1);
+        const rec={...r,id:k+'#'+idx};
+        sigIndex.set(s,[DATA.length]);
+        DATA.push(rec);
+        added++;
+      }
+    });
+    console.log(`[Sevkiyat] Birleştirme: ${updated} güncellendi, ${added} eklendi`);
   }else{
-    DATA=mapped;
+    DATA=reassignIds(incoming.map(r=>({...r})));
   }
   refreshUI();
   await saveAll();
   const st=fileStat(DATA);
   const savedOk=hasCloud()?!LAST_SAVE_ERR:true;
   $('statLine').innerHTML=`✅ <b>${esc(fileName)}</b> · sayfa(lar): ${esc(sheetLabel)}<br>`+
-    `📄 ${nf0.format(rows.length)} satır işlendi · toplam <b>${nf0.format(DATA.length)}</b> kayıt<br>`+
+    `📄 ${nf0.format(incoming.length)} satır işlendi · toplam <b>${nf0.format(DATA.length)}</b> kayıt<br>`+
     `📅 Tarih aralığı: <b>${st.range}</b>`+
-    (total?` · 🔤 ${total} kayıtta etiket standartlaştırıldı`:'')+
     (st.noDate?` · <span style="color:#dc2626">${nf0.format(st.noDate)} satırda tarih okunamadı</span>`:'')+
     (savedOk?'':` · <span style="color:#dc2626"><b>⚠️ Buluta YAZILAMADI!</b> ☁️ Bağlantı → ⬆ Buluta Zorla Yükle</span>`);
-  toast(`${rows.length} kayıt yüklendi · ${hasCloud()?(savedOk?'buluta kaydedildi ✓':'⚠️ BULUTA KAYDEDİLEMEDİ'):'tarayıcıya kaydedildi'}`,
+  toast(`${incoming.length} kayıt işlendi · toplam ${nf0.format(DATA.length)} kayıt · ${hasCloud()?(savedOk?'buluta kaydedildi ✓':'⚠️ BULUTA KAYDEDİLEMEDİ'):'tarayıcıya kaydedildi'}`,
     savedOk?'success':'error');
 }
 function handleFile(file){
@@ -1087,7 +1138,7 @@ function linreg(ys){
   return x=>icpt+slope*x;
 }
 
-/* ================= ABC (müşteri sınıfları) ================= */
+/* ================= ABC ================= */
 function custAgg(rows){
   const map=new Map();
   rows.forEach(r=>{
@@ -1109,12 +1160,11 @@ function custAgg(rows){
   return list;
 }
 
-/* ================= YAŞAM DÖNGÜSÜ çekirdek ================= */
+/* ================= YAŞAM DÖNGÜSÜ ================= */
 function lifeRefDate(){
   const ts=DATA.filter(r=>r.tarih).map(r=>r.tarih.getTime());
   return ts.length?new Date(Math.max(...ts)):null;
 }
-/* Her müşteri için: yükleme sayısı, ort. aralık, son yükleme, geçen gün, durum */
 function custLifeRows(){
   const refD=lifeRefDate();
   const ref=refD?refD.getTime():null;
@@ -1137,12 +1187,11 @@ function custLifeRows(){
     o.loads=o.days.size;
     o.avgInt=(o.loads>=2&&o.first&&o.last)?Math.max(1,Math.round((o.last-o.first)/864e5/(o.loads-1))):null;
     o.gap=(ref!=null&&o.last)?Math.max(0,Math.round((ref-o.last.getTime())/864e5)):null;
-    /* etkin aralık: kısa vadeli çift yüklemeler yanıltmasın diye taban 5 gün */
     const eff=o.avgInt!=null?Math.max(o.avgInt,5):null;
     if(o.loads<2||eff==null||o.gap==null)o.status='tek';
     else if(o.gap<=Math.round(eff*1.3))o.status='ok';
     else if(o.gap<=Math.round(eff*1.8))o.status='watch';
-    else o.status='risk';   /* risk yalnızca ≥2 yükleme ve eşiği aşanlarda */
+    else o.status='risk';
     o.eff=eff;
   });
   return{list,ref:refD};
@@ -1152,24 +1201,20 @@ const stBadge=s=>`<span class="badge ${ST_LABEL[s][0]}">${ST_LABEL[s][1]}</span>
 
 function renderLifecycle(){
   const{list,ref}=custLifeRows();
-  $('riskHint').innerHTML=ref?`Referans tarih (verideki son yükleme): <b>${fmtDate(ref)}</b> · Bu sekme tüm geçmişi kullanır (yıl/hafta filtrelerinden bağımsız). Durum: <span class="badge ok">Ritimde</span> ≤ ort.aralık×1,3 · <span class="badge watch">İzle</span> ≤ ×1,8 · <span class="badge risk">Riskli</span> üstü.`:'';
-  /* 1) Riskli müşteriler */
+  $('riskHint').innerHTML=ref?`Referans tarih (verideki son yükleme): <b>${fmtDate(ref)}</b> · Bu sekme tüm geçmişi kullanır. Durum: <span class="badge ok">Ritimde</span> ≤ ort.aralık×1,3 · <span class="badge watch">İzle</span> ≤ ×1,8 · <span class="badge risk">Riskli</span> üstü.`:'';
   const clsRank={A:0,B:1,C:2};
   const risk=list.filter(o=>o.status==='risk')
     .sort((a,b)=>(clsRank[a.cls]-clsRank[b.cls])||((b.gap/(b.eff||1))-(a.gap/(a.eff||1))));
   let html=`<table class="tbl"><thead><tr><th>Müşteri</th><th>Sınıf</th><th>Yükleme</th><th>Toplam m³</th><th>Ort. Aralık</th><th>Son Yükleme</th><th>Geçen</th><th>Durum</th></tr></thead><tbody>`;
-  if(!risk.length)html+=`<tr><td colspan="8" class="empty">✅ Riskli müşteri yok — düzenli müşterilerin tümü ritminde.</td></tr>`;
+  if(!risk.length)html+=`<tr><td colspan="8" class="empty">✅ Riskli müşteri yok.</td></tr>`;
   risk.forEach(o=>{
     html+=`<tr><td class="dep">${esc(o.name)}</td><td><span class="badge ${o.cls}">${o.cls}</span></td>`+
       `<td>${o.loads}</td><td><span class="m3">${nf1.format(o.m3)}</span></td>`+
       `<td>~${o.avgInt} gün</td><td>${o.last?fmtDate(o.last):'—'}</td>`+
       `<td><b class="${o.gap>60?'dn2':''}">${o.gap} gün</b></td><td>${stBadge(o.status)}</td></tr>`;});
   $('tblRisk').innerHTML=html+'</tbody></table>';
-  /* 2) Büyüme matrisi */
   renderGrowth();
-  /* 3) Yeni/Kayıp akışı */
   renderFlow(ref);
-  /* 4) Ritim tablosu */
   const rhythm=list.filter(o=>o.loads>=2)
     .sort((a,b)=>({risk:0,watch:1,ok:2,tek:3}[a.status]-{risk:0,watch:1,ok:2,tek:3}[b.status])||b.m3-a.m3);
   html=`<table class="tbl"><thead><tr><th>Müşteri</th><th>Sınıf</th><th>Yükleme</th><th>İlk</th><th>Son</th><th>Ort. Aralık</th><th>Geçen</th><th>m³</th><th>Durum</th></tr></thead><tbody>`;
@@ -1179,7 +1224,6 @@ function renderLifecycle(){
       `<td>${o.loads}</td><td>${o.first?fmtDate(o.first):'—'}</td><td>${o.last?fmtDate(o.last):'—'}</td>`+
       `<td>~${o.avgInt} gün</td><td>${o.gap} gün</td><td><span class="m3">${nf1.format(o.m3)}</span></td><td>${stBadge(o.status)}</td></tr>`;});
   $('tblRhythm').innerHTML=html+'</tbody></table>';
-  /* 5) Müşteri × Bölüm matrisi */
   const deps=uniq(DATA.map(r=>r.bolum)).sort();
   const top=[...list].sort((a,b)=>b.m3-a.m3).slice(0,25);
   html=`<table class="tbl"><thead><tr><th>Müşteri</th><th>Sınıf</th>${deps.map(d=>`<th>${esc(d)}</th>`).join('')}<th class="tot">Toplam</th></tr></thead><tbody>`;
@@ -1214,12 +1258,10 @@ function renderGrowth(){
     else seg='kayip';
     return{name:n,cls:clsMap.get(n)||'C',cur:a.m3,curA:a.adet,pr:b.m3,prA:b.adet,delta,seg};
   });
-  const order=SEG[Object.keys(SEG)[0]].ord;
   list.sort((a,b)=>{
     if(SEG[a.seg].ord!==SEG[b.seg].ord)return SEG[a.seg].ord-SEG[b.seg].ord;
     if(a.seg==='kayip'||a.seg==='kuculen')return(b.pr-b.cur)-(a.pr-a.cur);
     return b.cur-a.cur;});
-  /* özet çipleri */
   const chips=['buyuyen','kuculen','yeni','kayip','stabil'].map(s=>{
     const g=list.filter(o=>o.seg===s);
     const net=g.reduce((sum,o)=>sum+(o.cur-o.pr),0);
@@ -1247,19 +1289,23 @@ function renderFlow(refD){
   });
   const refT=refD?refD.getTime():null;
   const months=[...new Set(DATA.filter(r=>r.tarih).map(r=>ymOf(r.tarih)))].sort();
+  const lastT=new Map();
+  DATA.filter(r=>r.tarih).forEach(r=>{
+    const n=r.musteri,t=r.tarih.getTime();
+    if(!lastT.has(n)||t>lastT.get(n))lastT.set(n,t);
+  });
   const rowsM=months.map(ym=>{
     const aktif=new Set(DATA.filter(r=>r.tarih&&ymOf(r.tarih)===ym).map(r=>r.musteri));
     let yeni=0,kayip=0;
-    firstM.forEach((v,n)=>{if(v===ym)yeni++;});
+    firstM.forEach((v)=>{if(v===ym)yeni++;});
     lastM.forEach((v,n)=>{
       if(v!==ym)return;
-      const last=[...DATA.filter(r=>r.musteri===n&&r.tarih)].map(r=>r.tarih.getTime());
-      const mx=Math.max(...last);
+      const mx=lastT.get(n)||0;
       if(refT!=null&&(refT-mx)/864e5>45)kayip++;
     });
     return{ym,yeni,kayip,aktif:aktif.size};
   }).reverse();
-  let html=`<table class="tbl"><thead><tr><th>Ay</th><th>🆕 Yeni Müşteri</th><th>↩️ Kayıp Müşteri</th><th>Aktif Müşteri</th><th>Net</th></tr></thead><tbody>`;
+  let html=`<table class="tbl"><thead><tr><th>Ay</th><th>🆕 Yeni</th><th>↩️ Kayıp</th><th>Aktif</th><th>Net</th></tr></thead><tbody>`;
   if(!rowsM.length)html+=`<tr><td colspan="5" class="empty">Veri yok</td></tr>`;
   rowsM.forEach(m=>{
     const net=m.yeni-m.kayip;
@@ -1320,12 +1366,11 @@ function renderAlerts(){
   box.querySelectorAll('[data-goto]').forEach(b=>b.onclick=()=>{setTab(b.dataset.goto);window.scrollTo({top:0,behavior:'smooth'});});
 }
 
-/* ================= Parsiyel Analizi ================= */
+/* ================= Parsiyel ================= */
 function renderParsiyel(){
   const par=DATA.filter(r=>norm(r.tip).includes('parsiyel'));
-  const hintEl=$('parHint');
   const total=DATA.length;
-  hintEl.innerHTML=total?`Verideki <b>${nf0.format(par.length)}</b> kayıt parsiyel tipinde (toplam ${nf0.format(total)} kayıt içinde, %${nf1.format(par.length/total*100)}).`:'';
+  $('parHint').innerHTML=total?`Verideki <b>${nf0.format(par.length)}</b> kayıt parsiyel tipinde (toplam ${nf0.format(total)} içinde, %${nf1.format(par.length/total*100)}).`:'';
   const adet=par.reduce((s,r)=>s+r.adet,0),m3=par.reduce((s,r)=>s+r.m3,0);
   const custs=new Set(par.map(r=>r.musteri));
   $('parCards').innerHTML=[
@@ -1357,9 +1402,8 @@ function renderParsiyel(){
       `<td><span class="m3">${nf1.format(o.m3)}</span></td><td>${o.adet?nf1.format(o.m3/o.adet):'—'}</td>`+
       `<td>${o.last?fmtDate(o.last):'—'}</td></tr>`;});
   $('tblParCust').innerHTML=html+'</tbody></table>';
-  /* Konsolidasyon */
   const cap=CAPS['KOMPLE TIR']||90;
-  $('consHint').innerHTML=`Aynı hafta içindeki 2+ parsiyel yükleme birleştirilebilirse tasarruf potansiyeli. Tahmin <b>KOMPLE TIR kapasitesi ${cap} m³</b> varsayımına dayanır — kaba göstergedir (Kapasite sekmesinden güncelleyebilirsiniz).`;
+  $('consHint').innerHTML=`Aynı hafta içindeki 2+ parsiyel birleştirilebilirse tasarruf potansiyeli. Tahmin <b>KOMPLE TIR kapasitesi ${cap} m³</b> varsayımına dayanır — kaba göstergedir.`;
   const wk=new Map();
   par.filter(r=>r.tarih).forEach(r=>{
     const k=`${r.yil}|${r.hafta}`;
@@ -1371,19 +1415,18 @@ function renderParsiyel(){
     const pot=Math.max(1,Math.ceil(o.m3/cap));
     return{...o,pot,save:Math.max(0,o.adet-pot)};
   }).sort((a,b)=>b.save-a.save||b.m3-a.m3);
-  html=`<table class="tbl"><thead><tr><th>Hafta</th><th>Müşteriler</th><th>Parsiyel</th><th>Araç</th><th>m³</th><th>Tahmini Birleşik Araç</th><th>Potansiyel Tasarruf</th></tr></thead><tbody>`;
-  if(!cons.length)html+=`<tr><td colspan="7" class="empty">Aynı haftada çakışan parsiyel bulunmadı — konsolidasyon fırsatı görünmüyor. 👍</td></tr>`;
+  html=`<table class="tbl"><thead><tr><th>Hafta</th><th>Müşteriler</th><th>Parsiyel</th><th>Araç</th><th>m³</th><th>Tahmini Birleşik</th><th>Potansiyel Tasarruf</th></tr></thead><tbody>`;
+  if(!cons.length)html+=`<tr><td colspan="7" class="empty">Aynı haftada çakışan parsiyel bulunmadı. 👍</td></tr>`;
   cons.forEach(o=>{
     const cl=[...o.custs];
     const cTxt=cl.slice(0,3).map(esc).join(', ')+(cl.length>3?` +${cl.length-3}`:'');
     html+=`<tr><td class="dep">${o.yil}/H${o.hafta}<br><span style="font-weight:400;font-size:11px">${fmtDate(new Date(o.min))} – ${fmtDate(new Date(o.max))}</span></td>`+
       `<td style="max-width:220px">${cTxt}</td><td>${o.n}</td><td>${nf0.format(o.adet)}</td><td><span class="m3">${nf1.format(o.m3)}</span></td>`+
-      `<td>~${pot_html(o.pot)}</td><td>${o.save>0?`<span class="badge up">≈ ${o.save} araç</span>`:'<span class="zero">—</span>'}</td></tr>`;});
+      `<td>~${o.pot} araç</td><td>${o.save>0?`<span class="badge up">≈ ${o.save} araç</span>`:'<span class="zero">—</span>'}</td></tr>`;});
   $('tblParCons').innerHTML=html+'</tbody></table>';
-  function pot_html(v){return v;}
 }
 
-/* ================= Render: Genel ================= */
+/* ================= Genel ================= */
 function renderKPIs(rows){
   const adet=rows.reduce((s,r)=>s+r.adet,0),m3=rows.reduce((s,r)=>s+r.m3,0);
   $('kVehicles').textContent=nf0.format(adet);
@@ -1504,7 +1547,7 @@ function renderReports(rows){
   renderWeekly(rows);renderDaily(rows);renderTable(rows);
 }
 
-/* ================= Müşteri sekmesi ================= */
+/* ================= Müşteriler ================= */
 function renderCustomers(rows){
   const list=custAgg(rows);
   let html=`<table class="tbl"><thead><tr><th>#</th><th>Müşteri</th><th>Sınıf</th><th>Araç</th><th>m³</th><th>Pay %</th><th>Küm. %</th><th>Yükleme Sayısı</th><th>Son Yükleme</th><th></th></tr></thead><tbody>`;
@@ -1765,6 +1808,15 @@ async function saveTargetsFromEditor(){
 }
 
 /* ================= Sekmeler & Ana Render ================= */
+function showRenderError(stage,e){
+  const b=$('errBanner');
+  b.style.display='';
+  b.textContent=`⚠️ "${stage}" bölümü çizilemedi: ${e.message} — diğer bölümler etkilenmedi. Detay için F12 → Console.`;
+  console.error('[Sevkiyat] '+stage+' hatası:',e);
+}
+function safe(stage,fn,...args){
+  try{fn(...args);}catch(e){showRenderError(stage,e);}
+}
 function renderTab(tab){
   if(tab==='yasam'){renderLifecycle();return;}
   if(tab==='parsiyel'){renderParsiyel();return;}
@@ -1783,13 +1835,14 @@ function setTab(tab){
 }
 function renderAll(){
   const rows=getFiltered();
-  renderKPIs(rows);
-  renderTab(TAB);
-  renderReports(rows);
-  renderAlerts();
+  /* Raporlar EN ÖNCE — başka bir bölüm hata sewse bile asla boş kalmaz */
+  safe('Detay Raporları',renderReports,rows);
+  safe('KPI',renderKPIs,rows);
+  safe('Sekme: '+TAB,renderTab,TAB);
+  safe('Uyarı Paneli',renderAlerts);
   $('resultCount').textContent=`${nf0.format(rows.length)} kayıt filtrede`;
 }
-function refreshUI(){populateFilters();renderAll();setPill(hasCloud()?(LAST_SAVE_ERR?'err':'cloud'):'local');}
+function refreshUI(){safe('Filtreler',populateFilters);renderAll();setPill(hasCloud()?(LAST_SAVE_ERR?'err':'cloud'):'local');}
 
 /* ================= Dışa aktarım ================= */
 function downloadTemplate(){
@@ -1830,7 +1883,6 @@ function exportReports(){
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([
     ['AY','ARAÇ','M³',...deps.map(d=>d+' m³')],
     ...mon.map(m=>[m.ym,m.adet,+m.m3.toFixed(1),...deps.map(d=>+(m.deps[d]||0).toFixed(1))])]),'Aylik');
-  /* Yaşam döngüsü sayfaları */
   const{list}=custLifeRows();
   const risk=list.filter(o=>o.status==='risk');
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([
@@ -1884,8 +1936,8 @@ async function loadSample(){
    ['GER EHF','EXPORT-2','PLANLI','40 HC',1,'13.01.2021','','70'],
    ['S AND A LTD','EXPORT-1','PLANLI','PARSİYEL TIR',1,'15.01.2021','45','45'],
    ['HAPPY DREAMS','EXPORT-2','PLANLI','PARSİYEL TIR',1,'16.01.2021','40','40']];
-  DATA=raw.map(([m,b,k,t,a,tr,pm,tm])=>hydrate({musteri:m,bolum:b,kategori:k,tip:t,adet:+a,
-    tarih:parseDate(tr),parsiyelM3:+pm||0,toplamM3:+tm||0,m3:+tm||+pm||0}));
+  DATA=reassignIds(raw.map(([m,b,k,t,a,tr,pm,tm])=>hydrate({musteri:m,bolum:b,kategori:k,tip:t,adet:+a,
+    tarih:parseDate(tr),parsiyelM3:+pm||0,toplamM3:+tm||0,m3:+tm||+pm||0})));
   refreshUI();await saveAll();toast('Örnek veri yüklendi ve kaydedildi');
 }
 
@@ -1972,16 +2024,22 @@ document.addEventListener('DOMContentLoaded',()=>{
     $('cfgStatus').textContent='⏳ Bağlantı test ediliyor…';
     try{
       await cloudTest();saveCfg();
-      $('cfgStatus').textContent='✅ Bağlantı başarılı. Bulut ile yerel veriler birleştiriliyor…';
-      const cloud=await cloudLoadAll();
-      const map=new Map();
-      cloud.forEach(r=>map.set(r.id,r));
-      DATA.forEach(r=>{if(!map.has(r.id))map.set(r.id,r);});
-      DATA=[...map.values()].map(hydrate);
+      $('cfgStatus').textContent='✅ Bağlantı başarılı. Bulut ile yerel veriler normalleştiriliyor…';
+      const cloud=(await cloudLoadAll()).map(hydrate);
+      const combined=[...DATA,...cloud];
+      canonicalizeRows(combined);
+      const map=new Map();const sig=new Set();
+      combined.forEach(r=>{
+        if(!isDetId(r))return;
+        if(map.has(r.id))return;
+        map.set(r.id,r);sig.add(contentSig(r));
+      });
+      const extras=combined.filter(r=>!isDetId(r)&&!sig.has(contentSig(r)));
+      DATA=reassignIds([...map.values(),...extras]);
       await idbSet('rows',DATA);
       await withRetry(()=>cloudSaveAll(DATA));
       LAST_SAVE_ERR='';refreshUI();
-      $('cfgStatus').textContent=`✅ Buluta bağlandı — birleştirildi, toplam ${nf0.format(DATA.length)} kayıt bulutta.`;
+      $('cfgStatus').textContent=`✅ Buluta bağlandı — normalleştirildi, toplam ${nf0.format(DATA.length)} kayıt bulutta.`;
       toast('Bulut bağlantısı kuruldu ve veriler eşitlendi');
     }catch(e){$('cfgStatus').textContent='❌ '+e.message;}
   };
@@ -2000,7 +2058,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     if(!hasCloud()){$('cfgStatus').textContent='⚠ Önce bağlanın.';return;}
     if(!confirm('Buluttaki veriler yerel verinin ÜZERİNE yazılacak. Emin misiniz?'))return;
     $('cfgStatus').textContent='⏳ Buluttan okunuyor…';
-    try{DATA=(await cloudLoadAll()).map(hydrate);await idbSet('rows',DATA);refreshUI();
+    try{DATA=reassignIds((await cloudLoadAll()).map(hydrate));await idbSet('rows',DATA);refreshUI();
       $('cfgStatus').textContent='✅ Buluttan yenilendi — '+nf0.format(DATA.length)+' kayıt.';}
     catch(e){$('cfgStatus').textContent='❌ '+e.message;}
   };

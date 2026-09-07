@@ -2052,7 +2052,7 @@ function renderWeekday(rows){
           var ds=ctx.dataset;
           var real=ds.realVals?ds.realVals[ctx.dataIndex]:0;
           return ds.label+': '+nf1.format(real)+' '+ds.unit+' (%'+nf0.format(ctx.parsed.y)+')';
-        }}}}});
+        }}}});
   var html='<table class="tbl"><thead><tr><th>Gün</th><th>Araç</th><th>m³</th><th>Gün Sayısı</th><th>Ort. Araç</th><th>Ort. m³</th><th>Pay %</th></tr></thead><tbody>';
   var totM3=order.reduce(function(s,d){return s+(agg[d]?agg[d].m3:0);},0)||1;
   order.forEach(function(d){

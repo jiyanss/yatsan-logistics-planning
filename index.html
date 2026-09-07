@@ -1823,12 +1823,28 @@ function renderWeekday(rows){
     agg[d].m3+=r.m3;agg[d].adet+=r.adet;agg[d].days.add(r.tarihStr);
   });
   const labels=order.map(d=>GUNLER[d]);
+  const realM3=order.map(d=>agg[d]?+(agg[d].m3/agg[d].days.size).toFixed(1):0);
+  const realA=order.map(d=>agg[d]?+(agg[d].adet/agg[d].days.size).toFixed(1):0);
+  const maxM3=Math.max(...realM3,1),maxA=Math.max(...realA,1);
+  /* Tek eksen: her seri kendi maksimumuna göre % olarak çizilir →
+     çubuklar her zaman 0'dan yukarı doğru; gerçek değerler tooltip'te */
+  const pctM3=realM3.map(v=>v/maxM3*100);
+  const pctA=realA.map(v=>v/maxA*100);
   makeChart('v_wd','chWd',{type:'bar',data:{labels,datasets:[
-    {type:'bar',label:'Ort. m³/Gün',data:order.map(d=>agg[d]?+(agg[d].m3/agg[d].days.size).toFixed(1):0),backgroundColor:'#10b981',borderRadius:6,yAxisID:'y'},
-    {type:'bar',label:'Ort. Araç/Gün',data:order.map(d=>agg[d]?+(agg[d].adet/agg[d].days.size).toFixed(1):0),backgroundColor:'#3b82f6',borderRadius:6,yAxisID:'y1'}]},
+    {type:'bar',label:'Ort. m³/Gün',data:pctM3,backgroundColor:'#10b981',borderRadius:6,base:0,
+     realVals:realM3,unit:'m³',yAxisID:'y'},
+    {type:'bar',label:'Ort. Araç/Gün',data:pctA,backgroundColor:'#3b82f6',borderRadius:6,base:0,
+     realVals:realA,unit:'araç',yAxisID:'y'}]},
     options:{responsive:true,maintainAspectRatio:false,
-      scales:{y:{beginAtZero:true,title:{display:true,text:'Ort. m³'}},y1:{position:'right',beginAtZero:true,grid:{drawOnChartArea:false},title:{display:true,text:'Ort. Araç'}}},
-      plugins:{legend:{labels:{usePointStyle:true,pointStyle:'circle',boxWidth:8}}}}});
+      scales:{y:{beginAtZero:true,min:0,max:110,
+        ticks:{callback:v=>v+'%',maxTicksLimit:6},
+        title:{display:true,text:'seri maksimumuna göre %'}}},
+      plugins:{legend:{position:'bottom',labels:{usePointStyle:true,pointStyle:'circle',boxWidth:8}},
+        tooltip:{callbacks:{label:ctx=>{
+          const ds=ctx.dataset;
+          const real=ds.realVals?ds.realVals[ctx.dataIndex]:0;
+          return `${ds.label}: ${nf1.format(real)} ${ds.unit} (%${nf0.format(ctx.parsed.y)})`;
+        }}}}});
   let html=`<table class="tbl"><thead><tr><th>Gün</th><th>Araç</th><th>m³</th><th>Gün Sayısı</th><th>Ort. Araç</th><th>Ort. m³</th><th>Pay %</th></tr></thead><tbody>`;
   const totM3=order.reduce((s,d)=>s+(agg[d]?.m3||0),0)||1;
   order.forEach(d=>{

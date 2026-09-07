@@ -77,7 +77,6 @@ details.card>.card-inner{padding:14px 18px 16px;border-top:1px solid var(--borde
 .upload-side{display:flex;flex-direction:column;gap:9px;justify-content:center;min-width:240px}
 .chk{display:flex;gap:8px;align-items:flex-start;font-size:12.5px;color:var(--muted);cursor:pointer}
 .stat{font-size:12.5px;color:var(--muted);border-top:1px solid var(--border);padding-top:8px;line-height:1.6}
-/* ─── FİLTRELER: hizalı tek etiket kolonu ─── */
 .frow{display:flex;gap:10px;align-items:center;margin-top:9px}
 .frow .flab{font-size:11px;font-weight:700;color:var(--muted);width:62px;flex-shrink:0;text-transform:uppercase;letter-spacing:.4px}
 .frow .fval{flex:1;display:flex;gap:6px;flex-wrap:wrap;align-items:center;min-width:0}
@@ -119,7 +118,6 @@ body:not(.dark) .alert-row.ok{color:#166534}
 .tile:hover .t-go{transform:translateX(3px)}
 .tile .t-val{font-size:22px;font-weight:800;line-height:1.05;letter-spacing:-.5px}
 .tile .t-sub{font-size:11.5px;color:var(--muted);line-height:1.45}
-/* MINI GRAFİK: sabit yükseklik — asla büyüyemez */
 .tile .t-ch{position:relative;height:74px;flex:none}
 .tile .t-badges{display:flex;gap:5px;flex-wrap:wrap;margin-top:auto}
 .tile .t-bars{display:flex;flex-direction:column;gap:5px;margin-top:auto}
@@ -683,7 +681,6 @@ function makeChart(key,canvasId,config){
   }catch(e){
     console.error('[Sevkiyat] Grafik hatası ('+canvasId+'):',e);
     try{const g=window.Chart?Chart.getChart(cv):null;if(g){try{g.destroy();}catch(e2){}}}catch(e2){}
-    /* Grafik kurulamadıysa ham canvas'ı gizle → boş dev kutu oluşmasın */
     cv.style.display='none';
     return null;
   }
@@ -1391,7 +1388,6 @@ function renderDashboard(rows){
   const lastD=rows.filter(r=>r.tarih);
   $('kLast').textContent=lastD.length?fmtDate(new Date(Math.max(...lastD.map(r=>r.tarih.getTime())))):'—';
   $('fltSum').textContent=`· ${nf0.format(rows.length)} kayıt`;
-  /* Hafta aralığı ipucu */
   const w=$('fWeek').value;
   const wr=$('weekRange');
   if(w!=='all'){
@@ -1823,11 +1819,11 @@ function renderWeekday(rows){
     agg[d].m3+=r.m3;agg[d].adet+=r.adet;agg[d].days.add(r.tarihStr);
   });
   const labels=order.map(d=>GUNLER[d]);
+  /* Düzeltilmiş: tek eksen, her seri kendi maksimumuna göre % — çubuklar her zaman 0'dan yukarı.
+     Gerçek değerler tooltip'te gösterilir. */
   const realM3=order.map(d=>agg[d]?+(agg[d].m3/agg[d].days.size).toFixed(1):0);
   const realA=order.map(d=>agg[d]?+(agg[d].adet/agg[d].days.size).toFixed(1):0);
   const maxM3=Math.max(...realM3,1),maxA=Math.max(...realA,1);
-  /* Tek eksen: her seri kendi maksimumuna göre % olarak çizilir →
-     çubuklar her zaman 0'dan yukarı doğru; gerçek değerler tooltip'te */
   const pctM3=realM3.map(v=>v/maxM3*100);
   const pctA=realA.map(v=>v/maxA*100);
   makeChart('v_wd','chWd',{type:'bar',data:{labels,datasets:[

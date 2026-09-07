@@ -9,7 +9,6 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -25,7 +24,6 @@ body.dark{
   --thbg:#0d1628;--hover:#16223a;--inputbg:#0d1628;
 }
 body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);font-size:14px;transition:background .25s,color .25s}
-#loginOv{display:none}
 .topbar{background:linear-gradient(135deg,#0f172a,#1e3a8a);color:#fff;padding:12px 22px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;position:sticky;top:0;z-index:50;box-shadow:0 2px 12px rgba(0,0,0,.3)}
 .brand{display:flex;align-items:center;gap:12px}
 .brand .logo{font-size:26px}
@@ -179,7 +177,7 @@ body:not(.dark) .dn2{color:#b91c1c}
 .modal h3{font-size:15.5px;margin-bottom:4px}
 .map-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:9px;margin:11px 0}
 .map-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:13px;flex-wrap:wrap}
-#mapPreview,#diagBody,#accStatus{padding:10px 12px;background:var(--hover);border:1px solid var(--border);border-radius:9px;font-size:12.5px;line-height:1.5}
+#mapPreview,#diagBody{padding:10px 12px;background:var(--hover);border:1px solid var(--border);border-radius:9px;font-size:12.5px;line-height:1.5}
 .cust-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:9px;margin:11px 0}
 .cust-stats .cs{background:var(--hover);border:1px solid var(--border);border-radius:11px;padding:9px 11px}
 .cust-stats .cs b{display:block;font-size:16px}
@@ -213,6 +211,7 @@ body:not(.dark) .dn2{color:#b91c1c}
   <div class="actions">
     <span class="pill" id="syncPill">⏳</span>
     <button class="btn btn-primary" id="btnUpload">📂 Excel Yükle</button>
+    <button class="btn btn-ghost" id="btnReload" title="Firestore'dan tam senkron (kota kullanır)">🔄 Yenile</button>
     <button class="btn btn-ghost" id="btnTemplate">⬇ Şablon</button>
     <button class="btn btn-ghost" id="btnExport">📊 Rapor İndir</button>
     <button class="btn btn-ghost" id="btnDiag">🔍 Teşhis</button>
@@ -232,7 +231,7 @@ body:not(.dark) .dn2{color:#b91c1c}
         <div class="dropzone" id="dropzone">
           <div class="big">📥</div>
           <b>Excel dosyasını sürükleyin veya tıklayın</b>
-          <span>Kayıtlar içerik kimliğiyle Firestore'a yazılır → tekrar yükleme çoğaltmaz</span>
+          <span>Sadece değişen kayıtlar Firebase'e yazılır · açılışlar önbellekten yapılır (kota dostu)</span>
         </div>
         <div class="upload-side">
           <label class="chk"><input type="checkbox" id="merge" checked> Mevcut verilerle <b>&nbsp;birleştir</b> (işaretsiz: dosyada olmayanlar SİLİNİR)</label>
@@ -594,6 +593,7 @@ var CAPS=Object.assign({},CAP_DEF);
 var PRESETS=[];
 var SEL_DEPS=new Set(),SEL_TIPS=new Set();
 var SYNC_ERR='';
+var SYNC_VER=null;
 
 /* ===== Grafik motoru ===== */
 function applyChartTheme(){
@@ -659,10 +659,9 @@ function idbGet(k){return idbOpen().then(function(db){return new Promise(functio
 function cacheSave(){return Promise.all([idbSet('rows',DATA),idbSet('targets',TARGETS)]).catch(function(){});}
 
 /* ===== Firebase ===== */
-var fdb=null,fauth=null;
+var fdb=null;
 function fbInit(){
   firebase.initializeApp(FIREBASE_CONFIG);
-  fauth=firebase.auth();
   fdb=firebase.firestore();
 }
 function toDbDoc(r){
@@ -720,6 +719,34 @@ function fbLoadTargets(){
     if(d.exists){try{TARGETS=JSON.parse(d.data().data)||{};}catch(e){}}
   });
 }
+/* ===== KOTA DOSTU SENKRON: meta/sync.ver sayacı ===== */
+function fbGetSyncVer(){
+  return fdb.collection('meta').doc('sync').get().then(function(d){
+    return d.exists?(+d.data().ver||0):0;
+  });
+}
+function fbBumpVer(){
+  return fdb.collection('meta').doc('sync').set({ver:firebase.firestore.FieldValue.increment(1)},{merge:true});
+}
+function fbCommitChange(upsertRows,deleteIds){
+  setPill('saving');
+  var p=withRetry(function(){return fbUpsert(upsertRows||[]);});
+  if(deleteIds&&deleteIds.length){
+    p=p.then(function(){return withRetry(function(){return fbDeleteIds(deleteIds);});});
+  }
+  return p.then(function(){return withRetry(fbBumpVer);})
+    .then(function(){return fbGetSyncVer();})
+    .then(function(ver){
+      SYNC_VER=ver;
+      return idbSet('syncver',ver);
+    })
+    .then(function(){SYNC_ERR='';setPill('cloud');return true;})
+    .catch(function(e){
+      SYNC_ERR=e.message;setPill('offline',e.message);
+      toast('Firebase\u2019e yazılamadı: '+e.message,'error');
+      return false;
+    });
+}
 function withRetry(fn,tries){
   tries=tries||2;
   function attempt(i){
@@ -731,7 +758,7 @@ function withRetry(fn,tries){
   return attempt(0);
 }
 
-/* ===== Senkron ===== */
+/* ===== Senkron göstergesi ===== */
 function setPill(mode,extra){
   var p=$('syncPill');
   if(mode==='cloud'){p.className='pill cloud';p.textContent='🔥 Firebase · '+nf0.format(DATA.length)+' kayıt';}
@@ -740,56 +767,66 @@ function setPill(mode,extra){
 }
 function syncUpsert(changed){
   if(!changed||!changed.length){setPill('cloud');return Promise.resolve(true);}
-  setPill('saving');
-  return withRetry(function(){return fbUpsert(changed);}).then(function(){
-    SYNC_ERR='';setPill('cloud');return true;
-  }).catch(function(e){
-    SYNC_ERR=e.message;setPill('offline',e.message);
-    toast('Firebase\u2019e yazılamadı: '+e.message,'error');
-    return false;
-  });
-}
-function reconcileFull(){
-  return cacheSave().then(function(){
-    setPill('saving');
-    return fdb.collection('sevkiyat').get().then(function(snap){
-      var remoteIds=snap.docs.map(function(d){return d.id;});
-      var localIds=new Set(DATA.map(function(r){return safeDocId(r.id);}));
-      var toDel=remoteIds.filter(function(id){return localIds.indexOf(id)<0;});
-      return fbUpsert(DATA).then(function(){
-        if(toDel.length)return fbDeleteIds(toDel);
-      });
-    }).then(function(){
-      SYNC_ERR='';setPill('cloud');
-    });
-  }).catch(function(e){
-    SYNC_ERR=e.message;setPill('offline',e.message);
-    toast('Firebase senkronizasyonu başarısız: '+e.message,'error');
-  });
+  return fbCommitChange(changed,null);
 }
 
-/* ===== Veri yükleme (girişsiz mod) ===== */
+/* ===== KOTA DOSTU AÇILIŞ =====
+   1) IndexedDB önbelleğinden anında boya (0 okuma)
+   2) meta/sync versiyonunu oku (1 okuma)
+   3) Önbellek versiyonu = bulut versiyonu ise BİTİŞ (tam okuma yok!)
+      farklıysa bir kez tam yükle */
 function bootData(){
   return idbGet('rows').then(function(cached){
-    if(cached&&cached.length&&!DATA.length){DATA=reassignIds(cached.map(hydrate));refreshUI();}
-    return idbGet('targets');
-  }).then(function(tCache){
+    if(cached&&cached.length){DATA=reassignIds(cached.map(hydrate));refreshUI();}
+    return Promise.all([idbGet('syncver'),idbGet('targets')]);
+  }).then(function(res){
+    var cacheVer=res[0];
+    var tCache=res[1];
     if(tCache&&typeof tCache==='object')TARGETS=Object.assign({},tCache);
     setPill('saving');
-    return fbLoadTargets();
-  }).then(function(){
-    return fbLoadRows();
-  }).then(function(rows){
-    DATA=reassignIds(rows);
-    return cacheSave();
-  }).then(function(){
-    SYNC_ERR='';setPill('cloud');
-    refreshUI();
+    return fbLoadTargets().then(function(){
+      return fbGetSyncVer();
+    }).then(function(remoteVer){
+      SYNC_VER=remoteVer;
+      if(cacheVer===remoteVer&&DATA.length){
+        /* Önbellek güncel — tam okuma YOK (kota dostu) */
+        SYNC_ERR='';setPill('cloud');
+        return cacheSave().then(function(){refreshUI();});
+      }
+      /* Versiyon farklı (veya önbellek boş) → bir kez tam yükle */
+      return fbLoadRows().then(function(rows){
+        DATA=reassignIds(rows);
+        SYNC_VER=remoteVer;
+        return Promise.all([cacheSave(),idbSet('syncver',remoteVer)]);
+      }).then(function(){
+        SYNC_ERR='';setPill('cloud');
+        refreshUI();
+      });
+    });
   }).catch(function(e){
     SYNC_ERR=e.message;
     setPill('offline',e.message);
-    toast('Firestore okunamadı: '+e.message,'error');
+    toast('Firestore okunamadı: '+e.message+' — önbellekteki veri gösteriliyor.','error');
     refreshUI();
+  });
+}
+function fullReloadFromCloud(){
+  setPill('saving');
+  return fbLoadTargets().then(function(){
+    return fbLoadRows();
+  }).then(function(rows){
+    DATA=reassignIds(rows);
+    return fbGetSyncVer();
+  }).then(function(ver){
+    SYNC_VER=ver;
+    return Promise.all([cacheSave(),idbSet('syncver',ver)]);
+  }).then(function(){
+    SYNC_ERR='';setPill('cloud');
+    refreshUI();
+    toast('Firestore\u2019dan yenilendi — '+nf0.format(DATA.length)+' kayıt');
+  }).catch(function(e){
+    SYNC_ERR=e.message;setPill('offline',e.message);
+    toast('Yenileme başarısız: '+e.message,'error');
   });
 }
 
@@ -936,10 +973,13 @@ function fileStat(rows){
   }
   return{noDate:noDate,range:range};
 }
+/* Artımlı yazma: sadece değişenler yazılır, silinenler silinir, versiyon artar */
 function applyRows(incoming,sheetLabel,fileName){
   canonicalizeRows(DATA);
   canonicalizeRows(incoming);
   var changed=[];
+  var removedIds=[];
+  var oldIds=new Set(DATA.map(function(r){return safeDocId(r.id);}));
   if($('merge').checked){
     var sigIndex=new Map();
     DATA.forEach(function(r,i){
@@ -976,18 +1016,17 @@ function applyRows(incoming,sheetLabel,fileName){
   }else{
     DATA=reassignIds(incoming.map(function(r){return Object.assign({},r);}));
     changed=DATA;
+    var newIds=new Set(DATA.map(function(r){return safeDocId(r.id);}));
+    oldIds.forEach(function(id){
+      if(!newIds.has(id))removedIds.push(id);
+    });
+    if(removedIds.length)console.log('[Sevkiyat] Değiştirme modu: '+removedIds.length+' eski kayıt silinecek');
   }
   cacheSave().then(function(){refreshUI();});
-  var okP;
-  if($('merge').checked){
-    okP=syncUpsert(changed);
-  }else{
-    okP=reconcileFull().then(function(){return SYNC_ERR==='';});
-  }
-  okP.then(function(ok){
+  fbCommitChange(changed,removedIds).then(function(ok){
     var st=fileStat(DATA);
     $('statLine').innerHTML='✅ <b>'+esc(fileName)+'</b> · '+esc(sheetLabel)+'<br>📄 '+nf0.format(incoming.length)+' satır · toplam <b>'+nf0.format(DATA.length)+'</b> kayıt<br>📅 '+st.range+
-      (ok?'':' · <span style="color:#dc2626"><b>⚠️ Firebase\u2019e yazılamadı</b></span>');
+      (ok?'':` · <span style="color:#dc2626"><b>⚠️ Firebase\u2019e yazılamadı</b></span>`);
     toast(incoming.length+' kayıt işlendi · toplam '+nf0.format(DATA.length),ok?'success':'error');
   });
 }
@@ -2426,7 +2465,7 @@ function loadSample(){
       tarih:parseDate(row[5]),parsiyelM3:+row[6]||0,toplamM3:+row[7]||0,m3:+row[7]||+row[6]||0});
   }));
   refreshUI();
-  reconcileFull().then(function(){toast('Örnek veri yüklendi');});
+  fbCommitChange(DATA,null).then(function(){toast('Örnek veri yüklendi');});
 }
 
 /* ===== Toast ===== */
@@ -2464,6 +2503,7 @@ document.addEventListener('DOMContentLoaded',function(){
   $('fileInput').addEventListener('change',function(e){handleFile(e.target.files[0]);e.target.value='';});
   $('btnUpload').onclick=function(){$('uplCard').open=true;$('fileInput').click();};
   $('btnUpload2').onclick=function(){$('fileInput').click();};
+  $('btnReload').onclick=function(){fullReloadFromCloud();};
   $('btnTemplate').onclick=downloadTemplate;
   $('btnExport').onclick=exportReports;
   $('btnDiag').onclick=runDiag;
@@ -2474,10 +2514,21 @@ document.addEventListener('DOMContentLoaded',function(){
   };
   $('btnClear').onclick=function(){
     if(!confirm('Firebase dahil TÜM veriler silinecek. Emin misiniz?'))return;
-    DATA=[];closeDetail();
+    DATA=[];
+    closeDetail();
     cacheSave();
     refreshUI();
-    withRetry(fbDeleteAll).then(function(){setPill('cloud');}).catch(function(e){setPill('offline',e.message);});
+    setPill('saving');
+    withRetry(fbDeleteAll).then(function(){
+      return withRetry(fbBumpVer);
+    }).then(function(){
+      return fbGetSyncVer();
+    }).then(function(ver){
+      SYNC_VER=ver;
+      return Promise.all([idbSet('syncver',ver),idbSet('rows',[])]);
+    }).then(function(){
+      setPill('cloud');
+    }).catch(function(e){setPill('offline',e.message);});
     $('statLine').textContent='Henüz veri yüklenmedi.';
     toast('Veriler temizlendi');
   };

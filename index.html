@@ -25,21 +25,7 @@ body.dark{
   --thbg:#0d1628;--hover:#16223a;--inputbg:#0d1628;
 }
 body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);font-size:14px;transition:background .25s,color .25s}
-#loginOv{position:fixed;inset:0;z-index:100;background:linear-gradient(135deg,#0f172a,#1e3a8a);display:flex;align-items:center;justify-content:center;padding:16px}
-#loginOv.hide{display:none}
-.login-box{background:#fff;border-radius:18px;padding:28px 26px;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,.4);color:#0f172a}
-.login-box .llogo{text-align:center;font-size:40px;margin-bottom:6px}
-.login-box h2{text-align:center;font-size:18px;margin-bottom:2px}
-.login-box .lsub{text-align:center;color:#64748b;font-size:12.5px;margin-bottom:18px}
-.login-box .field{margin-bottom:11px}
-.login-box label{display:block;font-size:11px;font-weight:600;color:#64748b;margin-bottom:3px}
-.login-box input{width:100%;padding:9px 11px;border:1px solid #e2e8f0;border-radius:9px;font-size:13px;font-family:inherit}
-.login-box .err{background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;padding:8px 11px;border-radius:8px;font-size:12.5px;margin-bottom:11px;display:none}
-.login-box .ok{background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;padding:8px 11px;border-radius:8px;font-size:12.5px;margin-bottom:11px;display:none}
-.login-actions{display:flex;gap:8px;margin-top:4px}
-.login-actions .btn{flex:1}
-.login-foot{display:flex;justify-content:center;margin-top:12px;font-size:12px}
-.login-foot a{color:#2563eb;cursor:pointer;text-decoration:none}
+#loginOv{display:none}
 .topbar{background:linear-gradient(135deg,#0f172a,#1e3a8a);color:#fff;padding:12px 22px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;position:sticky;top:0;z-index:50;box-shadow:0 2px 12px rgba(0,0,0,.3)}
 .brand{display:flex;align-items:center;gap:12px}
 .brand .logo{font-size:26px}
@@ -207,7 +193,7 @@ body:not(.dark) .dn2{color:#b91c1c}
 .hm-legend i{width:12px;height:12px;border-radius:3px;display:inline-block;vertical-align:-2px;margin-right:3px}
 .cap-row{display:grid;grid-template-columns:1fr 120px;gap:9px;align-items:center;margin-bottom:5px}
 @media print{
-  .actions,.no-print,.modal-ov,.toast,#loginOv,#activeChips{display:none!important}
+  .actions,.no-print,.modal-ov,.toast,#activeChips{display:none!important}
   body{background:#fff}
   .container{max-width:none;padding:0}
   .card{box-shadow:none;border:1px solid #ddd;page-break-inside:avoid}
@@ -218,23 +204,6 @@ body:not(.dark) .dn2{color:#b91c1c}
 </style>
 </head>
 <body>
-
-<div id="loginOv">
-  <div class="login-box">
-    <div class="llogo">🚚</div>
-    <h2>Sevkiyat Yükleme Paneli</h2>
-    <div class="lsub">Devam etmek için giriş yapın</div>
-    <div class="err" id="loginErr"></div>
-    <div class="ok" id="loginOk"></div>
-    <div class="field"><label>E-POSTA</label><input type="email" id="loginEmail" placeholder="ad@sirket.com" autocomplete="username"></div>
-    <div class="field"><label>ŞİFRE</label><input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password"></div>
-    <div class="login-actions">
-      <button class="btn btn-primary" id="btnLogin">Giriş Yap</button>
-      <button class="btn btn-outline" id="btnRegister" style="display:none">Kayıt Ol</button>
-    </div>
-    <div class="login-foot"><a id="btnForgot">Şifremi unuttum</a></div>
-  </div>
-</div>
 
 <header class="topbar">
   <div class="brand">
@@ -248,7 +217,6 @@ body:not(.dark) .dn2{color:#b91c1c}
     <button class="btn btn-ghost" id="btnExport">📊 Rapor İndir</button>
     <button class="btn btn-ghost" id="btnDiag">🔍 Teşhis</button>
     <button class="btn btn-ghost" id="btnTheme" title="Karanlık / Aydınlık mod">🌙</button>
-    <button class="btn btn-ghost" id="btnAccount">👤 Hesap</button>
     <button class="btn btn-danger" id="btnClear">🗑 Temizle</button>
   </div>
 </header>
@@ -469,19 +437,6 @@ body:not(.dark) .dn2{color:#b91c1c}
   </div>
 </div>
 
-<div class="modal-ov" id="accOv">
-  <div class="modal" style="max-width:480px">
-    <h3>👤 Hesap</h3>
-    <p class="hint">Veriler Firebase Firestore'da tutulur; giriş yaptığınız sürece her cihazdan aynı veriye ulaşırsınız.</p>
-    <div id="accStatus"></div>
-    <div class="map-actions">
-      <button class="btn btn-outline" id="accReload">🔄 Firestore'dan Yenile</button>
-      <button class="btn btn-danger" id="btnLogout">Çıkış Yap</button>
-      <button class="btn btn-outline" id="accClose">Kapat</button>
-    </div>
-  </div>
-</div>
-
 <div id="toast" class="toast"></div>
 
 <script>
@@ -494,8 +449,6 @@ var FIREBASE_CONFIG={
   messagingSenderId:"633766455354",
   appId:"1:633766455354:web:4be47c83414c05a5aeed03"
 };
-var ALLOW_REGISTER=false;
-var CONFIG_OK=FIREBASE_CONFIG.apiKey.indexOf('BURAYA')!==0;
 
 /* ===== Yardımcılar ===== */
 var $=function(id){return document.getElementById(id);};
@@ -571,7 +524,6 @@ function reassignIds(rows){
   });
   return rows;
 }
-function isDetId(r){return typeof r.id==='string'&&r.id.indexOf(bkBase(r)+'#')===0;}
 function safeDocId(id){return String(id).replace(/\//g,'__');}
 
 /* ===== Tarih ===== */
@@ -713,7 +665,6 @@ function fbInit(){
   fauth=firebase.auth();
   fdb=firebase.firestore();
 }
-function fbUser(){return fauth?fauth.currentUser:null;}
 function toDbDoc(r){
   return{musteri:r.musteri,bolum:r.bolum,kategori:r.kategori||'',tip:r.tip,
     adet:r.adet||0,tarih:r.tarih?isoDay(r.tarih):null,tarih_str:r.tarihStr||'',
@@ -800,12 +751,11 @@ function syncUpsert(changed){
 }
 function reconcileFull(){
   return cacheSave().then(function(){
-    if(!fbUser())return;
     setPill('saving');
     return fdb.collection('sevkiyat').get().then(function(snap){
       var remoteIds=snap.docs.map(function(d){return d.id;});
       var localIds=new Set(DATA.map(function(r){return safeDocId(r.id);}));
-      var toDel=remoteIds.filter(function(id){return !localIds.has(id);});
+      var toDel=remoteIds.filter(function(id){return localIds.indexOf(id)<0;});
       return fbUpsert(DATA).then(function(){
         if(toDel.length)return fbDeleteIds(toDel);
       });
@@ -818,18 +768,7 @@ function reconcileFull(){
   });
 }
 
-/* ===== Auth ===== */
-function authErrTr(e){
-  var c=(e&&e.code)||'';
-  if(c.indexOf('invalid-credential')>=0||c.indexOf('wrong-password')>=0||c.indexOf('user-not-found')>=0)return'E-posta veya şifre hatalı.';
-  if(c.indexOf('email-already-in-use')>=0)return'Bu e-posta zaten kayıtlı.';
-  if(c.indexOf('weak-password')>=0)return'Şifre en az 6 karakter olmalı.';
-  if(c.indexOf('invalid-email')>=0)return'Geçersiz e-posta adresi.';
-  if(c.indexOf('too-many-requests')>=0)return'Çok fazla deneme — birkaç dakika bekleyin.';
-  if(c.indexOf('network')>=0)return'Ağ hatası — internet bağlantınızı kontrol edin.';
-  if(c.indexOf('operation-not-allowed')>=0)return'Firebase konsolunda E-posta/Şifre yöntemi etkinleştirilmemiş.';
-  return (e&&e.message)||'Bilinmeyen hata';
-}
+/* ===== Veri yükleme (girişsiz mod) ===== */
 function bootData(){
   return idbGet('rows').then(function(cached){
     if(cached&&cached.length&&!DATA.length){DATA=reassignIds(cached.map(hydrate));refreshUI();}
@@ -851,17 +790,6 @@ function bootData(){
     setPill('offline',e.message);
     toast('Firestore okunamadı: '+e.message,'error');
     refreshUI();
-  });
-}
-function watchAuth(){
-  fauth.onAuthStateChanged(function(user){
-    if(user){
-      hideLogin();
-      setPill('saving');
-      bootData();
-    }else{
-      showLogin();
-    }
   });
 }
 
@@ -1080,7 +1008,7 @@ function handleFile(file){
       var tImp=importTargetsFromWb(wb);
       if(tImp){
         cacheSave();
-        if(fbUser())withRetry(fbSaveTargets).catch(function(){});
+        withRetry(fbSaveTargets).catch(function(){});
         toast('🎯 '+tImp+' aylık hedef alındı');
       }
       var res=autoParse();
@@ -1676,7 +1604,8 @@ function renderViewGenel(rows){
     fLabels=weekly.map(function(w){return w.yil+'/H'+w.hafta;});
     for(var j=0;j<FC;j++){
       var d=new Date(lastDate.getTime()+(j+1)*7*864e5);
-      fLabels.push(isoWeek(d)+' yılı H'+isoWeek(d)+'*');
+      var iw=isoWeek(d);
+      fLabels.push(iw+'/H'+iw+'*');
     }
     fV=[].concat(new Array(weekly.length).fill(null),fV);
     fM=[].concat(new Array(weekly.length).fill(null),fM);
@@ -2330,16 +2259,13 @@ function saveTargetsFromEditor(){
     if(!TARGETS[ym].adet&&!TARGETS[ym].m3)delete TARGETS[ym];
   });
   cacheSave();
-  var ok=true;
-  if(fbUser()){
-    withRetry(fbSaveTargets).catch(function(e){
-      ok=false;SYNC_ERR=e.message;setPill('offline',e.message);
-      toast('Hedefler Firebase\u2019e yazılamadı: '+e.message,'error');
-    });
-  }
+  withRetry(fbSaveTargets).catch(function(e){
+    SYNC_ERR=e.message;setPill('offline',e.message);
+    toast('Hedefler Firebase\u2019e yazılamadı: '+e.message,'error');
+  });
   $('targetOv').classList.remove('show');
   if(DETAIL_VIEW==='hedef')renderDetailView();
-  if(ok)toast('Hedefler kaydedildi ✓ (Firebase)');
+  toast('Hedefler kaydedildi ✓ (Firebase)');
 }
 
 /* ===== Ana render ===== */
@@ -2531,45 +2457,10 @@ function toggleTheme(){
 /* ===== Başlat ===== */
 document.addEventListener('DOMContentLoaded',function(){
   initTheme();
-  if(!CONFIG_OK){
-    $('loginErr').style.display='block';
-    $('loginErr').textContent='⚠️ Firebase yapılandırması eksik.';
-    $('btnLogin').disabled=true;
-    return;
-  }
-  if(!ALLOW_REGISTER)$('btnRegister').style.display='none';
+  applyChartTheme();
   fbInit();
-  watchAuth();
-  $('btnLogin').onclick=function(){
-    var err=$('loginErr'),ok=$('loginOk');
-    err.style.display='none';ok.style.display='none';
-    $('btnLogin').disabled=true;
-    $('btnLogin').textContent='⏳ Giriş…';
-    fauth.signInWithEmailAndPassword($('loginEmail').value.trim(),$('loginPass').value)
-      .catch(function(e){err.textContent=authErrTr(e);err.style.display='block';})
-      .then(function(){
-        $('btnLogin').disabled=false;
-        $('btnLogin').textContent='Giriş Yap';
-      });
-  };
-  $('btnRegister').onclick=function(){
-    var err=$('loginErr'),ok=$('loginOk');
-    err.style.display='none';ok.style.display='none';
-    fauth.createUserWithEmailAndPassword($('loginEmail').value.trim(),$('loginPass').value)
-      .then(function(){ok.textContent='✅ Hesap oluşturuldu.';ok.style.display='block';})
-      .catch(function(e){err.textContent=authErrTr(e);err.style.display='block';});
-  };
-  $('btnForgot').onclick=function(){
-    var err=$('loginErr'),ok=$('loginOk');
-    err.style.display='none';ok.style.display='none';
-    var em=$('loginEmail').value.trim();
-    if(!em){err.textContent='Önce e-posta adresinizi yazın.';err.style.display='block';return;}
-    fauth.sendPasswordResetEmail(em)
-      .then(function(){ok.textContent='📧 Şifre sıfırlama bağlantısı gönderildi.';ok.style.display='block';})
-      .catch(function(e){err.textContent=authErrTr(e);err.style.display='block';});
-  };
-  $('loginPass').addEventListener('keydown',function(e){if(e.key==='Enter')$('btnLogin').click();});
-  $('btnTheme').onclick=toggleTheme;
+  setPill('saving');
+  bootData();
   $('fileInput').addEventListener('change',function(e){handleFile(e.target.files[0]);e.target.value='';});
   $('btnUpload').onclick=function(){$('uplCard').open=true;$('fileInput').click();};
   $('btnUpload2').onclick=function(){$('fileInput').click();};
@@ -2586,9 +2477,7 @@ document.addEventListener('DOMContentLoaded',function(){
     DATA=[];closeDetail();
     cacheSave();
     refreshUI();
-    if(fbUser()){
-      withRetry(fbDeleteAll).then(function(){setPill('cloud');}).catch(function(e){setPill('offline',e.message);});
-    }
+    withRetry(fbDeleteAll).then(function(){setPill('cloud');}).catch(function(e){setPill('offline',e.message);});
     $('statLine').textContent='Henüz veri yüklenmedi.';
     toast('Veriler temizlendi');
   };
@@ -2615,7 +2504,6 @@ document.addEventListener('DOMContentLoaded',function(){
       else if($('mapperOv').classList.contains('show'))$('mapperOv').classList.remove('show');
       else if($('diagOv').classList.contains('show'))$('diagOv').classList.remove('show');
       else if($('targetOv').classList.contains('show'))$('targetOv').classList.remove('show');
-      else if($('accOv').classList.contains('show'))$('accOv').classList.remove('show');
       else if(DETAIL_VIEW)closeDetail();
     }
   });
@@ -2667,31 +2555,6 @@ document.addEventListener('DOMContentLoaded',function(){
     if(!rows.length){toast('Satır bulunamadı','error');return;}
     $('mapperOv').classList.remove('show');
     applyRows(rows,$('mapSheet').value,'manuel eşleştirme');
-  };
-  $('btnAccount').onclick=function(){
-    var u=fbUser();
-    if(!u)return;
-    $('accStatus').innerHTML='📧 Giriş yapan: <b>'+esc(u.email)+'</b><br>📍 Panel: <b>'+nf0.format(DATA.length)+'</b> kayıt<br>⏳ Senkron: '+
-      (SYNC_ERR?('<span style="color:#dc2626">'+esc(SYNC_ERR)+'</span>'):'✅ Firebase ile eşit');
-    $('accOv').classList.add('show');
-  };
-  $('accClose').onclick=function(){$('accOv').classList.remove('show');};
-  $('accReload').onclick=function(){
-    $('accStatus').textContent='⏳ Firestore\u2019dan okunuyor…';
-    fbLoadTargets().then(function(){
-      return fbLoadRows();
-    }).then(function(rows){
-      DATA=reassignIds(rows);
-      return cacheSave();
-    }).then(function(){
-      refreshUI();
-      $('accStatus').textContent='✅ Yenilendi — '+nf0.format(DATA.length)+' kayıt.';
-    }).catch(function(e){$('accStatus').textContent='❌ '+e.message;});
-  };
-  $('btnLogout').onclick=function(){
-    if(!confirm('Çıkış yapılacak. Veriler Firebase\u2019de güvende kalır.'))return;
-    fauth.signOut();
-    $('accOv').classList.remove('show');
   };
   var dz=$('dropzone');
   dz.addEventListener('click',function(){$('fileInput').click();});

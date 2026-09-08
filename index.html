@@ -118,6 +118,9 @@ body.detail-open #detailOv{display:block}
 .d-head h2{font-size:16px;flex:1;font-weight:800}
 .d-body{max-width:1280px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:14px}
 .charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+/* Sabit yükseklikler — iki seçici de kök düzeyde (uzama sorununun düzeltmesi) */
+.ch-wrap{position:relative;height:280px}
+.ch-wrap.tall{height:330px}
 .chart-card .ch-wrap{position:relative;height:280px}
 .chart-card .ch-wrap.tall{height:330px}
 @media(max-width:900px){.charts-grid{grid-template-columns:1fr}}
@@ -1011,7 +1014,7 @@ function applyRows(incoming,sheetLabel,fileName){
   }else{
     DATA=reassignIds(incoming.map(function(r){return Object.assign({},r);}));
     changed=DATA;
-    var newIds=new Set(DATA.map(function(r){return safeDocId(r.id);}));
+    var newIds=DATA.map(function(r){return safeDocId(r.id);});
     oldIds.forEach(function(id){
       if(newIds.indexOf(id)<0)removedIds.push(id);
     });
@@ -1056,6 +1059,17 @@ function handleFile(file){
     }catch(err){toast('Dosya okunamadı: '+err.message,'error');}
   };
   reader.readAsArrayBuffer(file);
+}
+
+/* ===== Günlük liste yardımcısı (bozuk concat kalıbının yerine) ===== */
+function dailyList(rows){
+  var m=groupSum(rows.filter(function(r){return r.tarih;}),function(r){return r.tarihStr;});
+  var out=[];
+  m.forEach(function(o,k){
+    var rr=o.ref||{};
+    out.push({k:k,adet:o.adet,m3:o.m3,t:rr.tarih?rr.tarih.getTime():0,d:rr.tarih||null,gun:rr.tarih?GUNLER[rr.tarih.getDay()]:'—'});
+  });
+  return out.sort(function(a,b){return a.t-b.t;});
 }
 
 /* ===== Kolon eşleştirme ===== */
@@ -1644,9 +1658,7 @@ function renderViewGenel(rows){
     fV=[].concat(new Array(weekly.length).fill(null),fV);
     fM=[].concat(new Array(weekly.length).fill(null),fM);
   }
-  var daily=[].concat.apply([],Array.from(groupSum(dated,function(r){return r.tarihStr;}).entries()))
-    .map(function(e){var o=e[1]||{},rr=o.ref||{};return{k:e[0],adet:o.adet||0,m3:o.m3||0,t:rr.tarih?rr.tarih.getTime():0};})
-    .sort(function(a,b){return a.t-b.t;});
+  var daily=dailyList(dated);
   $('detailBody').innerHTML=
     '<section class="charts-grid">'+
       '<div class="card chart-card"><h3>🏭 Bölümlere Göre Yükleme</h3><div class="ch-wrap"><canvas id="chDep"></canvas></div></div>'+
@@ -1983,7 +1995,7 @@ function renderHeatmap(rows){
   $('hmMonths').innerHTML=ml;
   $('hmMonths').style.setProperty('--cols',weeks.length);
 }
-/* Haftanın Günü: seçenekler ayrı fonksiyonlarda — derin iç içe parantez riski yok */
+/* Haftanın Günü: seçenekler ayrı fonksiyonlarda (parantez hatasına dayanıklı) */
 function wdTooltipCfg(){
   return{callbacks:{label:function(ctx){
     var ds=ctx.dataset;
@@ -2206,13 +2218,11 @@ function renderViewRapor(rows){
     html+='<tr><td>'+w2.yil+'</td><td><span class="badge">H'+w2.hafta+'</span></td><td>'+(w2.min!=null?(fmtDate(new Date(w2.min))+' – '+fmtDate(new Date(w2.max))):'—')+'</td><td><b>'+nf0.format(w2.adet)+'</b></td><td><b>'+nf1.format(w2.m3)+'</b></td>'+deps.map(function(d){return '<td>'+nf1.format(w2.deps[d]||0)+'</td>';}).join('')+'</tr>';
   });
   $('tblWeekly').innerHTML=html+'</tbody></table>';
-  var daily=[].concat.apply([],Array.from(groupSum(rows.filter(function(r){return r.tarih;}),function(r){return r.tarihStr;}).entries()))
-    .map(function(e){var o=e[1]||{},rr=o.ref||{};return{t:rr.tarih||null,gun:rr.tarih?GUNLER[rr.tarih.getDay()]:'—',adet:o.adet||0,m3:o.m3||0};})
-    .sort(function(a,b){return b.t-a.t;});
+  var daily=dailyList(rows).slice().reverse();
   html='<table class="tbl"><thead><tr><th>Tarih</th><th>Gün</th><th>Araç</th><th>m³</th><th>m³/Araç</th></tr></thead><tbody>';
   if(!daily.length)html+='<tr><td colspan="5" class="empty">Veri yok</td></tr>';
   daily.forEach(function(x){
-    html+='<tr><td>'+fmtDate(x.t)+'</td><td>'+x.gun+'</td><td>'+nf0.format(x.adet)+'</td><td>'+nf1.format(x.m3)+'</td><td>'+(x.adet?nf1.format(x.m3/x.adet):'—')+'</td></tr>';
+    html+='<tr><td>'+fmtDate(x.d)+'</td><td>'+x.gun+'</td><td>'+nf0.format(x.adet)+'</td><td>'+nf1.format(x.m3)+'</td><td>'+(x.adet?nf1.format(x.m3/x.adet):'—')+'</td></tr>';
   });
   $('tblDaily').innerHTML=html+'</tbody></table>';
   var sorted=rows.slice().sort(function(a,b){
@@ -2360,9 +2370,7 @@ function exportReports(){
   ].concat(deps.map(function(d){return d+' m³';}))],weekly.map(function(w){
     return [w.yil,w.hafta,w.min!=null?fmtDate(new Date(w.min)):'',w.max!=null?fmtDate(new Date(w.max)):'',w.adet,+w.m3.toFixed(1)].concat(deps.map(function(d){return +(w.deps[d]||0).toFixed(1);}));
   }))),'Haftalik');
-  var daily=[].concat.apply([],Array.from(groupSum(rows.filter(function(r){return r.tarih;}),function(r){return r.tarihStr;}).entries()))
-    .map(function(e){return{d:e[1].ref.tarih,gun:GUNLER[e[1].ref.tarih.getDay()],adet:e[1].adet,m3:e[1].m3};})
-    .sort(function(a,b){return a.d-b.d;});
+  var daily=dailyList(rows);
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([].concat([['TARİH','GÜN','ARAÇ','m³']],daily.map(function(x){return[fmtDate(x.d),x.gun,x.adet,+x.m3.toFixed(1)];}))),'Gunluk');
   var cell={};
   rows.forEach(function(r){

@@ -594,7 +594,7 @@ var PRESETS=[];
 var SEL_DEPS=new Set(),SEL_TIPS=new Set();
 var SYNC_ERR='';
 var SYNC_VER=null;
-
+var BOOTED=false;
 /* ===== Grafik motoru ===== */
 function applyChartTheme(){
   if(!window.Chart)return;
@@ -2499,7 +2499,16 @@ document.addEventListener('DOMContentLoaded',function(){
   applyChartTheme();
   fbInit();
   setPill('saving');
-  bootData();
+  /* Anonim giriş: Firestore kuralları request.auth != null istiyor */
+  fauth.signInAnonymously().catch(function(e){
+    toast('Firebase anonim giriş başarısız: '+e.message,'error');
+  });
+  fauth.onAuthStateChanged(function(user){
+    if(user&&!BOOTED){
+      BOOTED=true;
+      bootData();
+    }
+  });
   $('fileInput').addEventListener('change',function(e){handleFile(e.target.files[0]);e.target.value='';});
   $('btnUpload').onclick=function(){$('uplCard').open=true;$('fileInput').click();};
   $('btnUpload2').onclick=function(){$('fileInput').click();};

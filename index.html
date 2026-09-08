@@ -9,6 +9,7 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -211,7 +212,7 @@ body:not(.dark) .dn2{color:#b91c1c}
   <div class="actions">
     <span class="pill" id="syncPill">⏳</span>
     <button class="btn btn-primary" id="btnUpload">📂 Excel Yükle</button>
-    <button class="btn btn-ghost" id="btnReload" title="Firestore'dan tam senkron (kota kullanır)">🔄 Yenile</button>
+    <button class="btn btn-ghost" id="btnReload" title="Firestore'dan tam senkron">🔄 Yenile</button>
     <button class="btn btn-ghost" id="btnTemplate">⬇ Şablon</button>
     <button class="btn btn-ghost" id="btnExport">📊 Rapor İndir</button>
     <button class="btn btn-ghost" id="btnDiag">🔍 Teşhis</button>
@@ -595,6 +596,7 @@ var SEL_DEPS=new Set(),SEL_TIPS=new Set();
 var SYNC_ERR='';
 var SYNC_VER=null;
 var BOOTED=false;
+
 /* ===== Grafik motoru ===== */
 function applyChartTheme(){
   if(!window.Chart)return;
@@ -658,10 +660,11 @@ function idbGet(k){return idbOpen().then(function(db){return new Promise(functio
 });});}
 function cacheSave(){return Promise.all([idbSet('rows',DATA),idbSet('targets',TARGETS)]).catch(function(){});}
 
-/* ===== Firebase ===== */
-var fdb=null;
+/* ===== Firebase (Auth + Firestore) ===== */
+var fdb=null,fauth=null;
 function fbInit(){
   firebase.initializeApp(FIREBASE_CONFIG);
+  fauth=firebase.auth();
   fdb=firebase.firestore();
 }
 function toDbDoc(r){
@@ -719,7 +722,6 @@ function fbLoadTargets(){
     if(d.exists){try{TARGETS=JSON.parse(d.data().data)||{};}catch(e){}}
   });
 }
-/* ===== KOTA DOSTU SENKRON: meta/sync.ver sayacı ===== */
 function fbGetSyncVer(){
   return fdb.collection('meta').doc('sync').get().then(function(d){
     return d.exists?(+d.data().ver||0):0;
@@ -770,11 +772,7 @@ function syncUpsert(changed){
   return fbCommitChange(changed,null);
 }
 
-/* ===== KOTA DOSTU AÇILIŞ =====
-   1) IndexedDB önbelleğinden anında boya (0 okuma)
-   2) meta/sync versiyonunu oku (1 okuma)
-   3) Önbellek versiyonu = bulut versiyonu ise BİTİŞ (tam okuma yok!)
-      farklıysa bir kez tam yükle */
+/* ===== KOTA DOSTU AÇILIŞ ===== */
 function bootData(){
   return idbGet('rows').then(function(cached){
     if(cached&&cached.length){DATA=reassignIds(cached.map(hydrate));refreshUI();}
@@ -789,11 +787,9 @@ function bootData(){
     }).then(function(remoteVer){
       SYNC_VER=remoteVer;
       if(cacheVer===remoteVer&&DATA.length){
-        /* Önbellek güncel — tam okuma YOK (kota dostu) */
         SYNC_ERR='';setPill('cloud');
         return cacheSave().then(function(){refreshUI();});
       }
-      /* Versiyon farklı (veya önbellek boş) → bir kez tam yükle */
       return fbLoadRows().then(function(rows){
         DATA=reassignIds(rows);
         SYNC_VER=remoteVer;
@@ -973,13 +969,12 @@ function fileStat(rows){
   }
   return{noDate:noDate,range:range};
 }
-/* Artımlı yazma: sadece değişenler yazılır, silinenler silinir, versiyon artar */
 function applyRows(incoming,sheetLabel,fileName){
   canonicalizeRows(DATA);
   canonicalizeRows(incoming);
   var changed=[];
   var removedIds=[];
-  var oldIds=new Set(DATA.map(function(r){return safeDocId(r.id);}));
+  var oldIds=DATA.map(function(r){return safeDocId(r.id);});
   if($('merge').checked){
     var sigIndex=new Map();
     DATA.forEach(function(r,i){
@@ -1018,7 +1013,7 @@ function applyRows(incoming,sheetLabel,fileName){
     changed=DATA;
     var newIds=new Set(DATA.map(function(r){return safeDocId(r.id);}));
     oldIds.forEach(function(id){
-      if(!newIds.has(id))removedIds.push(id);
+      if(newIds.indexOf(id)<0)removedIds.push(id);
     });
     if(removedIds.length)console.log('[Sevkiyat] Değiştirme modu: '+removedIds.length+' eski kayıt silinecek');
   }
@@ -1026,7 +1021,7 @@ function applyRows(incoming,sheetLabel,fileName){
   fbCommitChange(changed,removedIds).then(function(ok){
     var st=fileStat(DATA);
     $('statLine').innerHTML='✅ <b>'+esc(fileName)+'</b> · '+esc(sheetLabel)+'<br>📄 '+nf0.format(incoming.length)+' satır · toplam <b>'+nf0.format(DATA.length)+'</b> kayıt<br>📅 '+st.range+
-      (ok?'':` · <span style="color:#dc2626"><b>⚠️ Firebase\u2019e yazılamadı</b></span>`);
+      (ok?'':' · <span style="color:#dc2626"><b>⚠️ Firebase\u2019e yazılamadı</b></span>');
     toast(incoming.length+' kayıt işlendi · toplam '+nf0.format(DATA.length),ok?'success':'error');
   });
 }
@@ -1988,6 +1983,22 @@ function renderHeatmap(rows){
   $('hmMonths').innerHTML=ml;
   $('hmMonths').style.setProperty('--cols',weeks.length);
 }
+/* Haftanın Günü: seçenekler ayrı fonksiyonlarda — derin iç içe parantez riski yok */
+function wdTooltipCfg(){
+  return{callbacks:{label:function(ctx){
+    var ds=ctx.dataset;
+    var real=ds.realVals?ds.realVals[ctx.dataIndex]:0;
+    return ds.label+': '+nf1.format(real)+' '+ds.unit+' (%'+nf0.format(ctx.parsed.y)+')';
+  }}};
+}
+function wdOptions(){
+  return{responsive:true,maintainAspectRatio:false,
+    scales:{y:{beginAtZero:true,min:0,max:110,
+      ticks:{callback:function(v){return v+'%';},maxTicksLimit:6},
+      title:{display:true,text:'seri maksimumuna göre %'}}},
+    plugins:{legend:{position:'bottom',labels:{usePointStyle:true,pointStyle:'circle',boxWidth:8}},
+      tooltip:wdTooltipCfg()}};
+}
 function renderWeekday(rows){
   var dated=rows.filter(function(r){return r.tarih;});
   var order=[1,2,3,4,5,6,0];
@@ -2006,21 +2017,12 @@ function renderWeekday(rows){
   var maxA=Math.max.apply(null,realA.concat([1]));
   var pctM3=realM3.map(function(v){return v/maxM3*100;});
   var pctA=realA.map(function(v){return v/maxA*100;});
-  makeChart('v_wd','chWd',{type:'bar',data:{labels:labels,datasets:[
+  var cfg={type:'bar',data:{labels:labels,datasets:[
     {type:'bar',label:'Ort. m³/Gün',data:pctM3,backgroundColor:'#10b981',borderRadius:6,
      realVals:realM3,unit:'m³'},
     {type:'bar',label:'Ort. Araç/Gün',data:pctA,backgroundColor:'#3b82f6',borderRadius:6,
-     realVals:realA,unit:'araç'}]},
-    options:{responsive:true,maintainAspectRatio:false,
-      scales:{y:{beginAtZero:true,min:0,max:110,
-        ticks:{callback:function(v){return v+'%';},maxTicksLimit:6},
-        title:{display:true,text:'seri maksimumuna göre %'}}},
-      plugins:{legend:{position:'bottom',labels:{usePointStyle:true,pointStyle:'circle',boxWidth:8}},
-        tooltip:{callbacks:{label:function(ctx){
-          var ds=ctx.dataset;
-          var real=ds.realVals?ds.realVals[ctx.dataIndex]:0;
-          return ds.label+': '+nf1.format(real)+' '+ds.unit+' (%'+nf0.format(ctx.parsed.y)+')';
-        }}}}});
+     realVals:realA,unit:'araç'}]},options:wdOptions()};
+  makeChart('v_wd','chWd',cfg);
   var html='<table class="tbl"><thead><tr><th>Gün</th><th>Araç</th><th>m³</th><th>Gün Sayısı</th><th>Ort. Araç</th><th>Ort. m³</th><th>Pay %</th></tr></thead><tbody>';
   var totM3=order.reduce(function(s,d){return s+(agg[d]?agg[d].m3:0);},0)||1;
   order.forEach(function(d){
@@ -2494,14 +2496,21 @@ function toggleTheme(){
 }
 
 /* ===== Başlat ===== */
+window.addEventListener('error',function(e){
+  var b=$('errBanner');
+  if(b){b.style.display='';b.textContent='⚠️ Betik hatası: '+e.message+' (satır '+e.lineno+') — panelin bir kısmı çalışmayabilir.';}
+});
 document.addEventListener('DOMContentLoaded',function(){
   initTheme();
   applyChartTheme();
   fbInit();
   setPill('saving');
-  /* Anonim giriş: Firestore kuralları request.auth != null istiyor */
+  /* Anonim giriş: Firestore kuralları request.auth!=null ister.
+     Kullanıcı hiçbir şey görmez; arka planda sessizce anonim kullanıcı açılır. */
   fauth.signInAnonymously().catch(function(e){
-    toast('Firebase anonim giriş başarısız: '+e.message,'error');
+    console.warn('[Sevkiyat] Anonim giriş başarısız:',e.message);
+    toast('Firebase girişi başarısız: '+e.message+' — önbellekle devam ediliyor','error');
+    if(!BOOTED){BOOTED=true;bootData();}
   });
   fauth.onAuthStateChanged(function(user){
     if(user&&!BOOTED){

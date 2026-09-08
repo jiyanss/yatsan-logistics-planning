@@ -1639,13 +1639,13 @@ function renderViewGenel(rows){
     for(var j=0;j<FC;j++){
       var d=new Date(lastDate.getTime()+(j+1)*7*864e5);
       var iw=isoWeek(d);
-      fLabels.push(iw+'/H'+iw+'*');
+      fLabels.push(d.getFullYear()+'/H'+iw+'*');
     }
     fV=[].concat(new Array(weekly.length).fill(null),fV);
     fM=[].concat(new Array(weekly.length).fill(null),fM);
   }
   var daily=[].concat.apply([],Array.from(groupSum(dated,function(r){return r.tarihStr;}).entries()))
-    .map(function(e){return{k:e[0],adet:e[1].adet,m3:e[1].m3,t:e[1].ref.tarih.getTime()};})
+    .map(function(e){var o=e[1]||{},rr=o.ref||{};return{k:e[0],adet:o.adet||0,m3:o.m3||0,t:rr.tarih?rr.tarih.getTime():0};})
     .sort(function(a,b){return a.t-b.t;});
   $('detailBody').innerHTML=
     '<section class="charts-grid">'+
@@ -2207,7 +2207,7 @@ function renderViewRapor(rows){
   });
   $('tblWeekly').innerHTML=html+'</tbody></table>';
   var daily=[].concat.apply([],Array.from(groupSum(rows.filter(function(r){return r.tarih;}),function(r){return r.tarihStr;}).entries()))
-    .map(function(e){return{t:e[1].ref.tarih,gun:GUNLER[e[1].ref.tarih.getDay()],adet:e[1].adet,m3:e[1].m3};})
+    .map(function(e){var o=e[1]||{},rr=o.ref||{};return{t:rr.tarih||null,gun:rr.tarih?GUNLER[rr.tarih.getDay()]:'—',adet:o.adet||0,m3:o.m3||0};})
     .sort(function(a,b){return b.t-a.t;});
   html='<table class="tbl"><thead><tr><th>Tarih</th><th>Gün</th><th>Araç</th><th>m³</th><th>m³/Araç</th></tr></thead><tbody>';
   if(!daily.length)html+='<tr><td colspan="5" class="empty">Veri yok</td></tr>';

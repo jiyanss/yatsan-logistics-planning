@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PaninoTurco — Maliyet & Satış Defteri</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=Space+Grotesk:wght@400..700&display=swap" rel="stylesheet">
+<script>
+/* herhangi bir hata olursa ekranda görünür yap — sessiz boş ekran olmasın */
+window.addEventListener('error',function(e){
+  if(document.getElementById('errBanner'))return;
+  var d=document.createElement('div');d.id='errBanner';d.className='err-banner';
+  d.innerHTML='<b>Beklenmeyen bir hata oluştu:</b> '+String((e&&e.message)||'bilinmeyen hata')+
+    '<span style="display:block;opacity:.85;margin-top:3px">Lütfen bu mesajın ekran görüntüsünü alıp geliştiriciyle paylaşın.</span>';
+  var b=document.createElement('button');b.textContent='Anladım';b.onclick=function(){d.remove()};
+  d.appendChild(b);
+  (document.body||document.documentElement).appendChild(d);
+});
+</script>
+<script src="https://unpkg.com/lucide@0.462.0/dist/umd/lucide.min.js"
+  onerror="var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/lucide@0.462.0/dist/umd/lucide.min.js';s.onload=function(){if(window.lucide)lucide.createIcons()};document.head.appendChild(s)"></script>
+<style>
+  :root{
+    --paper:#F4EFE2; --card:#FCFAF1; --ink:#262019; --ink-2:#7A6F5E;
+    --line:#E4DBC8; --line-2:#D3C7AD;
+    --accent:#C4432B; --accent-deep:#93301D;
+    --green:#4E6B3E; --amber:#B27A18;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{font-family:'Space Grotesk',sans-serif;background:var(--paper);color:var(--ink);-webkit-font-smoothing:antialiased;min-height:100vh}
+  body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:999;opacity:.05;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");}
+  button{font-family:inherit;cursor:pointer;color:inherit}
+  input,select{font-family:inherit;color:inherit}
+  .serif{font-family:'Fraunces',Georgia,serif;font-optical-sizing:auto}
+  svg.lucide{width:17px;height:17px;stroke-width:2}
+
+  .err-banner{position:fixed;left:14px;right:14px;top:14px;z-index:600;background:var(--accent-deep);color:#FFF1E8;border-radius:14px;padding:14px 16px;font-size:13.5px;line-height:1.55;box-shadow:0 12px 32px rgba(0,0,0,.28)}
+  .err-banner b{display:block;margin-bottom:2px}
+  .err-banner button{margin-top:10px;background:#FFF1E8;color:var(--accent-deep);border:none;border-radius:99px;padding:7px 16px;font-weight:700;font-size:12.5px;cursor:pointer}
+
+  .app{display:flex;min-height:100vh}
+  .sidebar{width:232px;flex-shrink:0;border-right:1px solid var(--line);padding:24px 16px;display:flex;flex-direction:column;gap:6px;position:sticky;top:0;height:100vh;background:var(--paper)}
+  .brand{display:flex;flex-direction:column;line-height:1;margin-bottom:26px}
+  .brand .b1{font-family:'Fraunces';font-size:26px;font-weight:600;letter-spacing:-.5px}
+  .brand .b2{font-family:'Fraunces';font-size:26px;font-weight:500;font-style:italic;color:var(--accent);letter-spacing:-.5px}
+  .brand .b-sub{font-size:10.5px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--ink-2);margin-top:8px}
+  .nav-btn{display:flex;align-items:center;gap:11px;width:100%;padding:11px 13px;border:none;background:none;border-radius:11px;font-size:14.5px;font-weight:600;color:var(--ink-2);text-align:left}
+  .nav-btn.active{background:var(--ink);color:#F6F0E1}
+  .side-foot{margin-top:auto;display:flex;flex-direction:column;gap:8px}
+  .side-note{font-size:11.5px;color:var(--ink-2);line-height:1.5}
+  .mini-btns{display:flex;gap:6px}
+  .mini-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line-2);background:var(--card);border-radius:9px;padding:8px 4px;font-size:12px;font-weight:600}
+  .mini-btn svg.lucide{width:14px;height:14px}
+
+  .main{flex:1;min-width:0}
+  .topbar{position:sticky;top:0;z-index:30;background:var(--paper);border-bottom:1px solid var(--line);padding:12px 18px 0;display:flex;flex-direction:column;gap:8px}
+  .top-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .brand.small{flex-direction:row;align-items:baseline;gap:5px;margin:0}
+  .brand.small .b1,.brand.small .b2{font-size:21px}
+  .brand.small .b-sub{display:none}
+  .top-actions{display:flex;align-items:center;gap:9px}
+  .chip{display:flex;align-items:center;gap:7px;border:1px solid var(--line-2);background:var(--card);border-radius:999px;padding:7px 13px;font-size:13px;font-weight:600}
+  .chip b{color:var(--accent)}
+  .icon-btn{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border:1px solid var(--line-2);background:var(--card);border-radius:999px;flex-shrink:0}
+  .icon-btn:active{transform:scale(.93)}
+  .strip{display:flex;align-items:center;gap:14px;font-size:12.5px;color:var(--ink-2);padding-bottom:10px;overflow-x:auto;white-space:nowrap}
+  .strip b{color:var(--ink);font-variant-numeric:tabular-nums}
+  .st-l{font-weight:700;letter-spacing:2px;font-size:10.5px;color:var(--accent)}
+  .dot{width:3px;height:3px;border-radius:99px;background:var(--line-2);flex-shrink:0}
+
+  #view{max-width:960px;margin:0 auto;padding:22px 18px 120px}
+  .page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+  .eyebrow{font-size:10.5px;font-weight:700;letter-spacing:2.4px;text-transform:uppercase;color:var(--accent);margin-bottom:6px}
+  h2.serif{font-size:clamp(26px,5vw,32px);font-weight:570;letter-spacing:-.6px;line-height:1.05}
+  .sec-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:30px 0 12px}
+  .sec-head h3{font-size:20px;font-weight:570;letter-spacing:-.3px}
+  .sub{font-size:12.5px;color:var(--ink-2)}
+
+  .btn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--ink);background:var(--ink);color:#F6F0E1;padding:10px 17px;border-radius:999px;font-size:13.5px;font-weight:600;transition:transform .12s}
+  .btn:active{transform:scale(.96)}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#FFF4EA}
+  .btn.ghost{background:transparent;color:var(--ink)}
+  .btn.danger{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn svg.lucide{width:15px;height:15px}
+
+  .seg{display:inline-flex;background:var(--card);border:1px solid var(--line-2);border-radius:999px;padding:3px}
+  .seg button{border:none;background:none;padding:7px 14px;border-radius:999px;font-size:13px;font-weight:600;color:var(--ink-2)}
+  .seg button.on{background:var(--ink);color:#F6F0E1}
+
+  .rows{border-top:1px solid var(--line)}
+  .row{display:flex;align-items:center;gap:13px;padding:14px 4px;border-bottom:1px solid var(--line)}
+  .grow{flex:1;min-width:0}
+  .grow b{font-size:15px;font-weight:600;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .subline{font-size:12.5px;color:var(--ink-2);margin-top:3px;display:block}
+  .num{font-variant-numeric:tabular-nums;font-weight:600;font-size:15px;white-space:nowrap}
+
+  .p-row{display:grid;grid-template-columns:1fr auto auto auto;align-items:center;gap:16px;padding:14px 4px;border-bottom:1px solid var(--line)}
+  .p-num{text-align:right}
+  .p-num b{font-family:'Fraunces';font-size:19px;font-weight:600;font-variant-numeric:tabular-nums;display:block}
+  .p-margin{min-width:76px;text-align:right}
+  .p-margin b{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;display:block;margin-bottom:5px}
+  .mbar{width:74px;height:4px;background:var(--line);border-radius:99px;margin-left:auto;overflow:hidden}
+  .mbar i{display:block;height:100%;border-radius:99px}
+  .p-act{display:flex;gap:7px}
+  @media(max-width:580px){
+    .p-row{grid-template-columns:1fr 42px;gap:8px 12px}
+    .p-act{grid-column:2;grid-row:1/4;flex-direction:column;align-items:center}
+    .p-num{grid-column:1;grid-row:2;text-align:left}
+    .p-margin{grid-column:1;grid-row:3;text-align:left}
+    .mbar{margin-left:0}
+  }
+
+  .date-pick label{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-2);display:block;margin-bottom:5px}
+  .date-pick input{padding:9px 11px;border:1px solid var(--line-2);border-radius:10px;background:var(--card);font-size:14px;font-weight:600;width:158px}
+  .sell-hint{font-size:12.5px;color:var(--ink-2);margin:14px 0 10px}
+  .sell-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(152px,1fr));gap:11px}
+  .sell-btn{position:relative;text-align:left;background:var(--card);border:1px solid var(--line-2);border-radius:15px;padding:14px 14px 12px;min-height:88px;display:flex;flex-direction:column;justify-content:space-between;transition:transform .1s}
+  .sell-btn:active{transform:scale(.955)}
+  .sell-btn .n{font-weight:600;font-size:14px;line-height:1.25}
+  .sell-btn .f{display:flex;justify-content:space-between;align-items:baseline;margin-top:10px}
+  .sell-btn .pr{font-family:'Fraunces';font-size:19px;font-weight:600}
+  .sell-btn .cs{font-size:11px;color:var(--ink-2)}
+  .qbadge{position:absolute;top:-9px;right:-7px;min-width:27px;height:27px;padding:0 7px;border-radius:999px;background:var(--accent);color:#FFF4EA;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;box-shadow:0 2px 8px rgba(147,48,29,.35)}
+  .pulse{animation:pulse .32s ease}
+  @keyframes pulse{0%{transform:scale(1)}40%{transform:scale(.93)}100%{transform:scale(1)}}
+
+  .charge{position:sticky;bottom:16px;z-index:40;display:none;align-items:center;gap:14px;background:var(--ink);color:#F6F0E1;border-radius:16px;padding:13px 16px;margin-top:18px;box-shadow:0 8px 24px rgba(38,32,25,.28)}
+  .charge.show{display:flex;flex-wrap:wrap}
+  .charge .info{flex:1;min-width:170px;font-size:13px;line-height:1.45}
+  .charge .info b{font-variant-numeric:tabular-nums}
+  .charge .info .lbl{color:#B9AC93;font-size:11px;letter-spacing:1.4px;text-transform:uppercase;font-weight:700;display:block;margin-bottom:2px}
+  .charge .btn.clear{border-color:#5C5245;color:#E8DFC9}
+  .charge .btn.go{background:var(--accent);border-color:var(--accent);color:#fff}
+  @media(max-width:880px){.charge{bottom:calc(74px + env(safe-area-inset-bottom))}}
+
+  .sum-block{display:grid;grid-template-columns:1.2fr 1fr;gap:26px;border-top:2px solid var(--ink);border-bottom:1px solid var(--line);padding:22px 0 24px}
+  @media(max-width:640px){.sum-block{grid-template-columns:1fr;gap:20px}}
+  .sum-big{font-size:clamp(46px,10vw,66px);font-weight:540;letter-spacing:-2px;line-height:1;margin:8px 0 10px;font-variant-numeric:tabular-nums}
+  .sum-side{display:flex;flex-direction:column;justify-content:center}
+  .ss-row{display:flex;justify-content:space-between;align-items:baseline;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px;color:var(--ink-2)}
+  .ss-row:last-child{border-bottom:none}
+  .ss-row b{color:var(--ink);font-size:16px;font-variant-numeric:tabular-nums}
+  #chartWrap g.bar{cursor:pointer}
+  #chartWrap g.bar:hover{opacity:.72}
+  .chart-cap{font-size:13px;color:var(--ink-2);margin-top:10px;min-height:20px}
+  .chart-cap b{color:var(--ink)}
+
+  .tp{padding:12px 0;border-bottom:1px solid var(--line)}
+  .tp-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+  .tp-h b{font-size:14.5px;font-weight:600}
+  .tp-h span{font-size:13px;color:var(--ink-2);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .tp-bar{height:6px;background:var(--line);border-radius:99px;margin:8px 0;overflow:hidden}
+  .tp-bar i{display:block;height:100%;background:var(--accent);border-radius:99px;min-width:3px}
+  .tp-m{display:flex;gap:18px;flex-wrap:wrap;font-size:12.5px;color:var(--ink-2)}
+  .tp-m b{color:var(--ink);font-variant-numeric:tabular-nums}
+
+  .ins{display:flex;gap:13px;padding:13px 0;border-bottom:1px solid var(--line);align-items:flex-start}
+  .ins:last-child{border-bottom:none}
+  .ins-ic{width:32px;height:32px;border-radius:99px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .ins-ic svg.lucide{width:15px;height:15px}
+  .ins-ic.warn{background:#F4DED6;color:var(--accent-deep)}
+  .ins-ic.good{background:#E2E8D6;color:var(--green)}
+  .ins-ic.info{background:#EAE2CE;color:var(--ink)}
+  .ins p{font-size:14px;line-height:1.5;padding-top:5px}
+
+  .empty{border:1px dashed var(--line-2);border-radius:16px;padding:34px 20px;text-align:center;color:var(--ink-2);font-size:14px;line-height:1.6}
+  .empty svg.lucide{width:26px;height:26px;margin-bottom:10px;color:var(--line-2)}
+  .empty .btn{margin-top:14px}
+
+  .tabbar{display:none;position:fixed;left:0;right:0;bottom:0;z-index:50;background:var(--card);border-top:1px solid var(--line);padding:7px 8px calc(7px + env(safe-area-inset-bottom))}
+  .tabbar button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;border:none;background:none;color:var(--ink-2);font-size:10.5px;font-weight:700;letter-spacing:.3px;padding:4px 0}
+  .tabbar button.active{color:var(--accent)}
+  .tabbar svg.lucide{width:21px;height:21px}
+
+  .overlay{position:fixed;inset:0;background:rgba(38,32,25,.48);display:flex;align-items:flex-end;justify-content:center;z-index:100}
+  .sheet{background:var(--card);width:100%;max-width:560px;max-height:90vh;overflow-y:auto;border-radius:22px 22px 0 0;padding:22px 20px calc(22px + env(safe-area-inset-bottom));animation:up .28s cubic-bezier(.2,.9,.3,1)}
+  @keyframes up{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
+  @media(min-width:720px){.overlay{align-items:center;padding:26px}.sheet{border-radius:22px;animation:pop .22s ease}}
+  @keyframes pop{from{transform:translateY(14px) scale(.97);opacity:0}to{transform:none;opacity:1}}
+  .sheet-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+  .sheet-head h3{font-size:22px;font-weight:570;letter-spacing:-.3px}
+  label.f{display:block;font-size:11px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;color:var(--ink-2);margin:16px 0 6px}
+  input.f-in,select.f-in{width:100%;padding:11px 13px;border:1px solid var(--line-2);border-radius:11px;background:#FFFEF9;font-size:15px}
+  input.f-in:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:transparent}
+  .hint{font-size:12px;color:var(--ink-2);margin-top:7px;line-height:1.5}
+  .sheet-actions{display:flex;gap:10px;margin-top:22px}
+  .sheet-actions .btn{flex:1;justify-content:center;padding:12px}
+  .f-div{height:1px;background:var(--line);margin:20px -20px}
+
+  .ing-pick{max-height:168px;overflow-y:auto;border:1px solid var(--line);border-radius:12px;background:#FFFEF9}
+  .ing-pick button{display:flex;justify-content:space-between;align-items:center;width:100%;padding:11px 13px;border:none;background:none;border-bottom:1px solid var(--line);font-size:14px;font-weight:600;text-align:left}
+  .ing-pick button:last-child{border-bottom:none}
+  .ing-pick button:active{background:var(--paper)}
+  .ing-pick .pp{font-size:12px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+  .rrow{display:flex;align-items:center;gap:9px;padding:9px 0;border-bottom:1px solid var(--line)}
+  .rrow .rn{flex:1;font-size:14px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .rrow input{width:78px;padding:8px 9px;border:1px solid var(--line-2);border-radius:9px;background:#FFFEF9;font-size:14px;text-align:right;font-variant-numeric:tabular-nums}
+  .rrow .ru{font-size:12px;color:var(--ink-2);width:26px}
+  .rrow .rc{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;width:66px;text-align:right}
+  .calc-box{margin-top:16px;background:var(--paper);border:1px solid var(--line);border-radius:13px;padding:13px 15px;font-size:13.5px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-variant-numeric:tabular-nums}
+  .calc-box b{font-size:15px}
+
+  #toastRoot{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom));z-index:300;display:flex;flex-direction:column;gap:8px;align-items:center;width:max-content;max-width:92vw}
+  @media(min-width:880px){#toastRoot{bottom:28px}}
+  .toast{background:var(--ink);color:#F6F0E1;padding:11px 18px;border-radius:999px;font-size:13.5px;display:flex;gap:9px;align-items:center;box-shadow:0 8px 22px rgba(38,32,25,.3);animation:tin .25s ease;max-width:100%}
+  .toast svg.lucide{width:15px;height:15px;color:#E8B54A;flex-shrink:0}
+  .toast.ok svg.lucide{color:#9DBB84}
+  .toast.out{opacity:0;transform:translateY(8px);transition:all .3s}
+  @keyframes tin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+  @media(max-width:880px){
+    .sidebar{display:none}
+    .tabbar{display:flex}
+    #view{padding-bottom:150px}
+  }
+  @media(min-width:880px){
+    .topbar{padding:16px 26px 0}
+    #view{padding:26px 26px 80px}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <span><span class="b1">Panino</span><span class="b2">Turco</span></span>
+      <span class="b-sub">Maliyet & Satış Defteri</span>
+    </div>
+    <button class="nav-btn" data-tab="stock"><i data-lucide="wheat"></i>Malzemeler</button>
+    <button class="nav-btn" data-tab="menu"><i data-lucide="sandwich"></i>Ürünler</button>
+    <button class="nav-btn" data-tab="sales"><i data-lucide="receipt"></i>Satış</button>
+    <button class="nav-btn" data-tab="reports"><i data-lucide="trending-up"></i>Analiz</button>
+    <div class="side-foot">
+      <div class="mini-btns">
+        <button class="mini-btn" onclick="openDataModal()"><i data-lucide="database"></i>Veri</button>
+        <button class="mini-btn" onclick="exportJSON()"><i data-lucide="download"></i>Yedek</button>
+      </div>
+      <p class="side-note">Tüm veriler yalnızca bu tarayıcıda saklanır. Düzenli yedek almayı unutmayın.</p>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="top-row">
+        <div class="brand small"><span class="b1">Panino</span><span class="b2">Turco</span></div>
+        <div class="top-actions">
+          <button class="chip" id="chipToday" onclick="goToday()"></button>
+          <button class="icon-btn" onclick="openDataModal()" title="Veri yönetimi"><i data-lucide="database"></i></button>
+        </div>
+      </div>
+      <div class="strip" id="todayStrip"></div>
+    </header>
+    <main id="view"></main>
+  </div>
+</div>
+
+<nav class="tabbar">
+  <button data-tab="stock"><i data-lucide="wheat"></i><span>Malzeme</span></button>
+  <button data-tab="menu"><i data-lucide="sandwich"></i><span>Ürün</span></button>
+  <button data-tab="sales"><i data-lucide="receipt"></i><span>Satış</span></button>
+  <button data-tab="reports"><i data-lucide="trending-up"></i><span>Analiz</span></button>
+</nav>
+
+<div id="modalRoot"></div>
+<div id="confirmRoot"></div>
+<div id="toastRoot"></div>
+
+<script>
+/* ============ yardımcılar ============ */
+const $  = s => document.querySelector(s);
+const LS = 'paninoturco_v1';
+const uid = () => Math.random().toString(36).slice(2,10);
+const AY = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
+const GUN = ['Paz','Pzt','Sal','Çar','Per','Cum','Cmt'];
+const f2 = new Intl.NumberFormat('tr-TR',{style:'currency',currency:'TRY'});
+const f0 = new Intl.NumberFormat('tr-TR',{style:'currency',currency:'TRY',maximumFractionDigits:0});
+const fmt  = n => f2.format(n||0);
+const fmt0 = n => f0.format(n||0);
+const pct  = n => isFinite(n)&&n!==0 ? n.toFixed(1).replace('.',',')+'%' : '0,0%';
+function isoLocal(d=new Date()){const o=d.getTimezoneOffset();return new Date(d.getTime()-o*6e4).toISOString().slice(0,10)}
+function isoDaysAgo(n){const d=new Date();d.setDate(d.getDate()-n);return isoLocal(d)}
+function dateLabel(iso){const d=new Date(iso+'T12:00:00');return d.getDate()+' '+AY[d.getMonth()]+' '+GUN[d.getDay()]}
+const icons = () => window.lucide && lucide.createIcons();
+
+let storageBlocked=false;
+const lsGet=k=>{try{return localStorage.getItem(k)}catch(e){storageBlocked=true;return null}};
+const lsSet=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){storageBlocked=true}};
+const lsDel=k=>{try{localStorage.removeItem(k)}catch(e){storageBlocked=true}};
+
+const UNITS = { kg:{rec:'gr',f:1000}, lt:{rec:'ml',f:1000}, adet:{rec:'adet',f:1} };
+
+/* ============ veri ============ */
+let state;
+let ui = { tab:'reports', period:7, saleDate:isoLocal(), counter:{}, editing:null };
+
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+
+function seed(){
+  const I=(name,punit,price)=>({id:uid(),name,punit,price});
+  const ingredients=[
+    I('Panino ekmeği','adet',12), I('Dana jambon','kg',480), I('Kaşar peyniri','kg',340),
+    I('Taze mozarella','kg',260), I('Domates','kg',30), I('Marul','adet',25),
+    I('Salatalık turşusu','kg',90), I('Ev mayonezi','kg',180), I('Acı sucuk','kg',420),
+    I('Zeytin ezmesi','kg',220), I('Roka','adet',8)
+  ];
+  const byN = n => ingredients.find(i=>i.name===n).id;
+  const P=(name,price,rec)=>({id:uid(),name,price,recipe:rec.map(([n,a])=>({ingredientId:byN(n),amount:a}))});
+  const products=[
+    P('Klasik Jambon-Kaşar',155,[['Panino ekmeği',1],['Dana jambon',80],['Kaşar peyniri',50],['Domates',30],['Marul',0.1],['Ev mayonezi',15]]),
+    P('Caprese (Mozarella & Domates)',120,[['Panino ekmeği',1],['Taze mozarella',80],['Domates',50],['Roka',0.15],['Ev mayonezi',10]]),
+    P('Acılı Sucuk Panino',140,[['Panino ekmeği',1],['Acı sucuk',90],['Kaşar peyniri',40],['Salatalık turşusu',25],['Ev mayonezi',15]]),
+    P('Zeytinli Vegeta',110,[['Panino ekmeği',1],['Zeytin ezmesi',50],['Kaşar peyniri',40],['Domates',40],['Marul',0.1]]),
+    P('Double Jambon',185,[['Panino ekmeği',1],['Dana jambon',140],['Kaşar peyniri',60]])
+  ];
+  const costOf=p=>p.recipe.reduce((t,r)=>{
+    const ing=ingredients.find(i=>i.id===r.ingredientId);
+    return t+ing.price*r.amount/UNITS[ing.punit].f;
+  },0);
+  const rnd=mulberry32(7); const sales=[];
+  for(let d=20;d>=0;d--){
+    const date=isoDaysAgo(d);
+    const wd=new Date(date+'T12:00:00').getDay();
+    const wknd=(wd===0||wd===6);
+    products.forEach(p=>{
+      const q=Math.round(wknd ? 6+rnd()*10 : 2+rnd()*8);
+      if(q>0) sales.push({id:uid(),date,productId:p.id,name:p.name,qty:q,unitPrice:p.price,unitCost:Math.round(costOf(p)*100)/100});
+    });
+  }
+  return {ingredients,products,sales};
+}
+function load(){
+  const r=lsGet(LS); if(!r)return null;
+  try{const s=JSON.parse(r);if(s&&Array.isArray(s.ingredients))return s}catch(e){}
+  return null;
+}
+function save(){lsSet(LS,JSON.stringify(state))}
+function fresh(){lsDel(LS);return seed()}
+
+state = load() || seed();
+save();
+
+/* ============ hesaplar ============ */
+const ingById = id => state.ingredients.find(i=>i.id===id);
+const recUnit = ing => UNITS[ing.punit].rec;
+function lineCost(ing,amount){ if(!ing) return 0; return ing.price*amount/UNITS[ing.punit].f }
+function productCost(p){ return (p.recipe||[]).reduce((t,r)=>t+lineCost(ingById(r.ingredientId),r.amount),0) }
+function metrics(p){ const c=productCost(p); return {cost:c, profit:p.price-c, margin:p.price>0?(p.price-c)/p.price*100:0} }
+function marginColor(m){ return m<35?'var(--accent)':(m<50?'var(--amber)':'var(--green)') }
+function computeToday(){
+  const s=state.sales.filter(x=>x.date===isoLocal());
+  const rev=s.reduce((t,x)=>t+x.qty*x.unitPrice,0);
+  const cost=s.reduce((t,x)=>t+x.qty*x.unitCost,0);
+  return {qty:s.reduce((t,x)=>t+x.qty,0), rev, profit:rev-cost};
+}
+function analytics(days){
+  const from=isoDaysAgo(days-1);
+  const sales=state.sales.filter(s=>s.date>=from);
+  const rev=sales.reduce((t,s)=>t+s.qty*s.unitPrice,0);
+  const cost=sales.reduce((t,s)=>t+s.qty*s.unitCost,0);
+  const profit=rev-cost;
+  const qty=sales.reduce((t,s)=>t+s.qty,0);
+  const daily=[];
+  for(let i=13;i>=0;i--){
+    const date=isoDaysAgo(i);
+    const ds=state.sales.filter(s=>s.date===date);
+    const dr=ds.reduce((t,s)=>t+s.qty*s.unitPrice,0);
+    const dc=ds.reduce((t,s)=>t+s.qty*s.unitCost,0);
+    daily.push({date,rev:dr,profit:dr-dc,qty:ds.reduce((t,s)=>t+s.qty,0)});
+  }
+  const bp={};
+  sales.forEach(s=>{const o=bp[s.productId]=bp[s.productId]||{name:s.name,qty:0,rev:0,profit:0};o.qty+=s.qty;o.rev+=s.qty*s.unitPrice;o.profit+=s.qty*(s.unitPrice-s.unitCost)});
+  const tops=Object.values(bp).sort((a,b)=>b.qty-a.qty);
+  return {sales,rev,cost,profit,qty,daily,tops};
+}
+
+/* ============ toast / modal / onay ============ */
+function toast(msg,icon='info',ok=false){
+  const t=document.createElement('div');
+  t.className='toast'+(ok?' ok':'');
+  t.innerHTML=`<i data-lucide="${icon}"></i><span>${msg}</span>`;
+  $('#toastRoot').appendChild(t); icons();
+  setTimeout(()=>{t.classList.add('out');setTimeout(()=>t.remove(),320)},2800);
+}
+function openModal(html){
+  $('#modalRoot').innerHTML=`<div class="overlay" id="ovl"><div class="sheet">${html}</div></div>`;
+  document.body.style.overflow='hidden';
+  $('#ovl').addEventListener('click',e=>{ if(e.target.id==='ovl') closeModal(); });
+  document.querySelectorAll('[data-close]').forEach(b=>b.onclick=closeModal);
+  icons();
+}
+function closeModal(){ $('#modalRoot').innerHTML=''; document.body.style.overflow=''; ui.editing=null; }
+function confirmDialog(title,msg,okLabel,cb){
+  $('#confirmRoot').innerHTML=`
+    <div class="overlay" id="covl"><div class="sheet" style="max-width:400px">
+      <h3 class="serif" style="font-size:20px;margin-bottom:8px">${title}</h3>
+      <p style="font-size:14px;line-height:1.55;color:var(--ink-2)">${msg}</p>
+      <div class="sheet-actions">
+        <button class="btn ghost" id="cNo">Vazgeç</button>
+        <button class="btn danger" id="cOk">${okLabel}</button>
+      </div>
+    </div></div>`;
+  document.body.style.overflow='hidden';
+  $('#covl').addEventListener('click',e=>{ if(e.target.id==='covl') closeConfirm(); });
+  $('#cNo').onclick=closeConfirm;
+  $('#cOk').onclick=()=>{ closeConfirm(); cb(); };
+}
+function closeConfirm(){ $('#confirmRoot').innerHTML=''; if(!$('#modalRoot').innerHTML) document.body.style.overflow=''; }
+
+/* ============ gezinme ============ */
+document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
+function setTab(t){ ui.tab=t; renderNav(); renderView(); window.scrollTo({top:0}); }
+function goToday(){ ui.period='today'; setTab('reports'); }
+function renderNav(){ document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===ui.tab)); }
+/* DÜZELTME + GÜVENCE: her sekme kendi korumalı alanında çizilir.
+   Bir bölümde ne olursa olsun hata çıkarsa yalnız o bölümde açıklama kartı görünür,
+   uygulamanın geri kalanı ve menü çalışmaya devam eder — boş ekran imkânsız. */
+function renderView(){
+  try{ renderStrip(); }catch(err){ console.error(err); }
+  try{
+    ({stock:renderMaterials,menu:renderProducts,sales:renderSales,reports:renderAnalytics})[ui.tab]();
+  }catch(err){
+    console.error(err);
+    $('#view').innerHTML=`<div class="empty"><i data-lucide="triangle-alert"></i>
+      <div><b>Bu bölüm açılırken bir sorun oluştu.</b></div>
+      <div style="margin-top:6px;font-size:13px">Hata: ${String(err&&err.message||err)}</div>
+      <button class="btn primary" onclick="renderView()">Tekrar dene</button></div>`;
+  }
+  icons();
+}
+function renderStrip(){
+  const t=computeToday();
+  $('#chipToday').innerHTML=`<b>${fmt0(t.rev)}</b><span style="color:var(--ink-2)">·</span>${t.qty} adet`;
+  $('#todayStrip').innerHTML=`
+    <span class="st-l">BUGÜN</span>
+    <span><b>${t.qty}</b> adet satış</span><i class="dot"></i>
+    <span>Ciro <b>${fmt0(t.rev)}</b></span><i class="dot"></i>
+    <span>Kâr <b style="color:${t.profit>=0?'var(--green)':'var(--accent)'}">${fmt0(t.profit)}</b></span>`;
+}
+
+/* ============ MALZEMELER ============ */
+function renderMaterials(){
+  const v=$('#view');
+  const usage=id=>state.products.filter(p=>(p.recipe||[]).some(r=>r.ingredientId===id)).length;
+  v.innerHTML=`
+    <div class="page-head">
+      <div><div class="eyebrow">Girdi Maliyetleri</div><h2 class="serif">Malzeme Defteri</h2></div>
+      <button class="btn primary" onclick="openMaterialModal()"><i data-lucide="plus"></i>Malzeme Ekle</button>
+    </div>
+    ${state.ingredients.length===0 ? emptyBlock('wheat','Henüz malzeme yok.','Sandviçlerinizin hammaddelerini ve alış fiyatlarını burada tanımlayın.','openMaterialModal()','İlk malzemeyi ekle') :
+    `<div class="rows">`+state.ingredients.map(i=>`
+      <div class="row">
+        <div class="grow">
+          <b>${i.name}</b>
+          <span class="subline">${fmt(i.price)} / ${i.punit} · ${usage(i.id)} üründe kullanılıyor</span>
+        </div>
+        <button class="icon-btn" onclick="openMaterialModal('${i.id}')" title="Düzenle"><i data-lucide="pencil"></i></button>
+        <button class="icon-btn" onclick="deleteMaterial('${i.id}')" title="Sil"><i data-lucide="trash-2"></i></button>
+      </div>`).join('')+`</div>`}`;
+}
+function openMaterialModal(id){
+  const m=id?state.ingredients.find(i=>i.id===id):null;
+  ui.editing=m?{...m}:{name:'',punit:'kg',price:''};
+  openModal(`
+    <div class="sheet-head"><h3 class="serif">${m?'Malzemeyi Düzenle':'Yeni Malzeme'}</h3><button class="icon-btn" data-close><i data-lucide="x"></i></button></div>
+    <label class="f">Malzeme adı</label>
+    <input class="f-in" id="mName" value="${ui.editing.name.replace(/"/g,'&quot;')}" placeholder="örn. Dana jambon">
+    <label class="f">Satın alma birimi</label>
+    <div class="seg" id="mUnitSeg">
+      ${['kg','lt','adet'].map(u=>`<button data-u="${u}" class="${ui.editing.punit===u?'on':''}">${u}</button>`).join('')}
+    </div>
+    <label class="f">Birim alış fiyatı (₺)</label>
+    <input class="f-in" id="mPrice" type="number" inputmode="decimal" min="0" step="0.5" value="${ui.editing.price}" placeholder="örn. 480">
+    <p class="hint" id="mHint"></p>
+    <div class="sheet-actions">
+      <button class="btn ghost" data-close>Vazgeç</button>
+      <button class="btn primary" id="mSave"><i data-lucide="check"></i>Kaydet</button>
+    </div>`);
+  const updHint=()=>{ $('#mHint').textContent=`Reçetelerde bu malzeme "${UNITS[ui.editing.punit].rec}" cinsinden girilir (örn. 80 ${UNITS[ui.editing.punit].rec}).`; };
+  updHint();
+  $('#mUnitSeg').onclick=e=>{ const b=e.target.closest('[data-u]'); if(!b)return;
+    ui.editing.punit=b.dataset.u;
+    document.querySelectorAll('#mUnitSeg button').forEach(x=>x.classList.toggle('on',x===b)); updHint(); };
+  $('#mSave').onclick=()=>{
+    const name=$('#mName').value.trim(); const price=parseFloat($('#mPrice').value);
+    if(!name){ toast('Malzeme adı gerekli.','triangle-alert'); return; }
+    if(!(price>0)){ toast('Geçerli bir fiyat girin.','triangle-alert'); return; }
+    const data={name,punit:ui.editing.punit,price};
+    if(m) Object.assign(m,data); else state.ingredients.push({id:uid(),...data});
+    save(); closeModal(); renderView(); toast(`«${name}» kaydedildi — ürün maliyetleri güncellendi.`,'check',true);
+  };
+}
+function deleteMaterial(id){
+  const ing=ingById(id); if(!ing)return;
+  const users=state.products.filter(p=>(p.recipe||[]).some(r=>r.ingredientId===id));
+  confirmDialog('Malzemeyi sil',
+    users.length?`«${ing.name}», ${users.length} ürünün reçetesinde kullanılıyor. Silinirse bu ürünlerden de çıkarılır ve maliyetleri düşer.`:`«${ing.name}» silinecek.`,'Sil',()=>{
+    users.forEach(p=>p.recipe=p.recipe.filter(r=>r.ingredientId!==id));
+    state.ingredients=state.ingredients.filter(i=>i.id!==id);
+    save(); renderView(); toast(`«${ing.name}» silindi.`,'trash-2');
+  });
+}
+function emptyBlock(icon,text,sub,fn,btn){
+  return `<div class="empty"><i data-lucide="${icon}"></i><div>${text}</div><div>${sub}</div><button class="btn primary" onclick="${fn}">${btn}</button></div>`;
+}
+
+/* ============ ÜRÜNLER ============ */
+function renderProducts(){
+  const v=$('#view');
+  v.innerHTML=`
+    <div class="page-head">
+      <div><div class="eyebrow">Menü & Marj</div><h2 class="serif">Ürünler</h2></div>
+      <button class="btn primary" onclick="openProductModal()"><i data-lucide="plus"></i>Ürün Ekle</button>
+    </div>
+    ${state.products.length===0 ? emptyBlock('sandwich','Henüz ürün yok.','Malzemelerden reçete kurun; maliyet ve marj otomatik hesaplanır.','openProductModal()','İlk ürünü ekle') :
+    `<div class="rows">`+state.products.map(p=>{
+      const m=metrics(p); const c=marginColor(m.margin);
+      return `<div class="p-row">
+        <div class="grow">
+          <b>${p.name}</b>
+          <span class="subline">maliyet ${fmt(m.cost)} · ${(p.recipe||[]).length} malzeme</span>
+        </div>
+        <div class="p-num"><b>${fmt(p.price)}</b><span class="subline">satış fiyatı</span></div>
+        <div class="p-margin">
+          <b style="color:${c}">${pct(m.margin)}</b>
+          <div class="mbar"><i style="width:${Math.max(Math.min(m.margin,100),0)}%;background:${c}"></i></div>
+          <span class="subline">kâr ${fmt(m.profit)}</span>
+        </div>
+        <div class="p-act">
+          <button class="icon-btn" onclick="openProductModal('${p.id}')" title="Düzenle"><i data-lucide="pencil"></i></button>
+          <button class="icon-btn" onclick="deleteProduct('${p.id}')" title="Sil"><i data-lucide="trash-2"></i></button>
+        </div>
+      </div>`}).join('')+`</div>`}`;
+}
+function openProductModal(id){
+  if(state.ingredients.length===0){ toast('Önce Malzemeler sekmesinden malzeme ekleyin.','triangle-alert'); setTab('stock'); return; }
+  const p=id?state.products.find(x=>x.id===id):null;
+  ui.editing=p?{id:p.id,name:p.name,price:p.price,recipe:p.recipe.map(r=>({...r}))}:{id:null,name:'',price:'',recipe:[]};
+  openModal(`
+    <div class="sheet-head"><h3 class="serif">${p?'Ürünü Düzenle':'Yeni Ürün'}</h3><button class="icon-btn" data-close><i data-lucide="x"></i></button></div>
+    <label class="f">Ürün adı</label>
+    <input class="f-in" id="pName" value="${ui.editing.name.replace(/"/g,'&quot;')}" placeholder="örn. Klasik Jambon-Kaşar">
+    <label class="f">Satış fiyatı (₺)</label>
+    <input class="f-in" id="pPrice" type="number" inputmode="decimal" min="0" step="1" value="${ui.editing.price}" placeholder="örn. 155">
+    <div class="f-div"></div>
+    <label class="f">Malzeme ekle</label>
+    <input class="f-in" id="ingSearch" placeholder="Malzeme ara...">
+    <div class="ing-pick" id="ingPick" style="margin-top:8px"></div>
+    <label class="f">Reçete</label>
+    <div id="recipeRows"></div>
+    <div class="calc-box" id="calcBox"></div>
+    <div class="sheet-actions">
+      <button class="btn ghost" data-close>Vazgeç</button>
+      <button class="btn primary" id="pSave"><i data-lucide="check"></i>Kaydet</button>
+    </div>`);
+  const drawPick=q=>{
+    const list=state.ingredients.filter(i=>i.name.toLocaleLowerCase('tr').includes(q));
+    $('#ingPick').innerHTML=list.length?list.map(i=>`
+      <button data-add="${i.id}"><span>${i.name}</span><span class="pp">${fmt(i.price)}/${i.punit}</span></button>`).join('')
+      :`<div style="padding:12px 13px;font-size:13px;color:var(--ink-2)">Sonuç yok</div>`;
+  };
+  drawPick('');
+  $('#ingSearch').oninput=e=>drawPick(e.target.value.toLocaleLowerCase('tr'));
+  $('#ingPick').onclick=e=>{
+    const b=e.target.closest('[data-add]'); if(!b)return;
+    const idp=b.dataset.add;
+    const ex=ui.editing.recipe.find(r=>r.ingredientId===idp);
+    if(ex) ex.amount+=1; else ui.editing.recipe.push({ingredientId:idp,amount:1});
+    drawRecipe(); updateCalc();
+  };
+  const drawRecipe=()=>{
+    $('#recipeRows').innerHTML=ui.editing.recipe.length?ui.editing.recipe.map((r,i)=>{
+      const ing=ingById(r.ingredientId);
+      const step=ing&&ing.punit==='adet'?'0.05':'any';
+      return `<div class="rrow">
+        <span class="rn">${ing?ing.name:'<s style="color:var(--ink-2)">silinmiş malzeme</s>'}</span>
+        <input type="number" inputmode="decimal" min="0" step="${step}" value="${r.amount}" data-i="${i}" class="r-amt">
+        <span class="ru">${ing?recUnit(ing):''}</span>
+        <span class="rc" id="rc${i}">${fmt(lineCost(ing,r.amount))}</span>
+        <button class="icon-btn" style="width:28px;height:28px" data-rx="${i}"><i data-lucide="x"></i></button>
+      </div>`}).join('')
+      :`<div style="padding:14px;font-size:13px;color:var(--ink-2);border:1px dashed var(--line-2);border-radius:12px;text-align:center">Yukarıdan malzeme ekleyin</div>`;
+    icons();
+  };
+  const updateCalc=()=>{
+    const cost=productCost({recipe:ui.editing.recipe});
+    const price=ui.editing.price||0;
+    const marg=price>0?(price-cost)/price*100:NaN;
+    $('#calcBox').innerHTML=`
+      <span>Maliyet <b>${fmt(cost)}</b></span>
+      <span>Kâr <b style="color:${price-cost>=0?'var(--green)':'var(--accent)'}">${fmt(price-cost)}</b></span>
+      <span>Marj <b style="color:${marginColor(marg)}">${isFinite(marg)?pct(marg):'—'}</b></span>`;
+  };
+  drawRecipe(); updateCalc();
+  $('#recipeRows').oninput=e=>{
+    const inp=e.target.closest('.r-amt'); if(!inp)return;
+    const i=+inp.dataset.i; ui.editing.recipe[i].amount=Math.max(parseFloat(inp.value)||0,0);
+    $('#rc'+i).textContent=fmt(lineCost(ingById(ui.editing.recipe[i].ingredientId),ui.editing.recipe[i].amount));
+    updateCalc();
+  };
+  $('#recipeRows').onclick=e=>{
+    const b=e.target.closest('[data-rx]'); if(!b)return;
+    ui.editing.recipe.splice(+b.dataset.rx,1); drawRecipe(); updateCalc();
+  };
+  $('#pPrice').oninput=e=>{ ui.editing.price=parseFloat(e.target.value)||0; updateCalc(); };
+  $('#pName').oninput=e=>{ ui.editing.name=e.target.value; };
+  $('#pSave').onclick=()=>{
+    const name=(ui.editing.name||'').trim();
+    if(!name){ toast('Ürün adı gerekli.','triangle-alert'); return; }
+    if(!(ui.editing.price>0)){ toast('Geçerli bir satış fiyatı girin.','triangle-alert'); return; }
+    if(ui.editing.recipe.length===0){ toast('Reçeteye en az bir malzeme ekleyin.','triangle-alert'); return; }
+    const cost=productCost({recipe:ui.editing.recipe});
+    if(p){ p.name=name; p.price=ui.editing.price; p.recipe=ui.editing.recipe; }
+    else state.products.push({id:uid(),name,price:ui.editing.price,recipe:ui.editing.recipe});
+    save(); closeModal(); renderView(); toast(`«${name}» kaydedildi · maliyet ${fmt(cost)}`,'check',true);
+  };
+}
+function deleteProduct(id){
+  const p=state.products.find(x=>x.id===id); if(!p)return;
+  confirmDialog('Ürünü sil',`«${p.name}» silinecek. Geçmiş satış kayıtları analizlerde korunur.`,'Sil',()=>{
+    delete ui.counter[id];
+    state.products=state.products.filter(x=>x.id!==id);
+    save(); renderView(); toast(`«${p.name}» silindi.`,'trash-2');
+  });
+}
+
+/* ============ SATIŞ ============ */
+function renderSales(){
+  const v=$('#view');
+  const date=ui.saleDate;
+  const day=state.sales.filter(s=>s.date===date);
+  const g={};
+  day.forEach(s=>{const o=g[s.productId]=g[s.productId]||{name:s.name,qty:0,rev:0};o.qty+=s.qty;o.rev+=s.qty*s.unitPrice});
+  const totQty=day.reduce((t,s)=>t+s.qty,0);
+  const totRev=day.reduce((t,s)=>t+s.qty*s.unitPrice,0);
+  const totCost=day.reduce((t,s)=>t+s.qty*s.unitCost,0);
+  const groups=Object.entries(g);
+
+  v.innerHTML=`
+    <div class="page-head">
+      <div><div class="eyebrow">Kasa</div><h2 class="serif">Satış Defteri</h2></div>
+      <div class="date-pick"><label>Satış günü</label><input type="date" id="saleDate" value="${date}"></div>
+    </div>
+    <p class="sub" style="margin-bottom:4px"><b>${dateLabel(date)}</b> · ${totQty?`${totQty} adet · ciro ${fmt0(totRev)} · kâr ${fmt0(totRev-totCost)}`:'kayıt yok'}</p>
+
+    <p class="sell-hint">Ürünlere dokunarak adet ekleyin, sonra «Güne İşle» ile kaydedin.</p>
+    ${state.products.length===0
+      ? emptyBlock('sandwich','Kasa için önce ürün gerekli.','Ürünler sekmesinden menünüzü oluşturun.',"setTab('menu')","Ürünlere git")
+      : `<div class="sell-grid" id="sellGrid">${state.products.map(p=>{
+          const m=metrics(p);
+          return `<button class="sell-btn" data-p="${p.id}">
+            <span class="n">${p.name}</span>
+            <span class="f"><span class="pr">${fmt0(p.price)}</span><span class="cs">kâr ${fmt0(m.profit)}</span></span>
+            <span class="qbadge" style="display:none"></span>
+          </button>`}).join('')}</div>`}
+
+    <div class="charge" id="chargeBar">
+      <div class="info"><span class="lbl">${date===isoLocal()?'Bugüne':'('+dateLabel(date)+') gününe'} işlenecek</span>
+      <span id="cbInfo"></span></div>
+      <button class="btn clear" id="cbClear">Temizle</button>
+      <button class="btn go" id="cbGo"><i data-lucide="check"></i>Güne İşle</button>
+    </div>
+
+    <div class="sec-head"><h3 class="serif">Gün kayıtları</h3><span class="sub">ürün bazında toplam</span></div>
+    ${groups.length? `<div class="rows">`+groups.map(([pid,o])=>`
+      <div class="row">
+        <div class="grow"><b>${o.name}</b><span class="subline">${o.qty} adet · ort. ${fmt(o.rev/o.qty)}</span></div>
+        <span class="num">${fmt(o.rev)}</span>
+        <button class="icon-btn" data-delsale="${pid}" title="Sil"><i data-lucide="trash-2"></i></button>
+      </div>`).join('')+
+      `<div class="row" style="border-bottom:none"><div class="grow"><b>Gün toplamı</b><span class="subline">${totQty} adet · maliyet ${fmt0(totCost)}</span></div>
+      <span class="num" style="font-size:17px;color:var(--accent)">${fmt0(totRev)}</span></div></div>`
+      : `<div class="empty" style="padding:22px">Bu gün için kayıt yok.</div>`}`;
+
+  $('#saleDate').onchange=e=>{ ui.saleDate=e.target.value||isoLocal(); ui.counter={}; renderSales(); };
+  const sellGrid=$('#sellGrid');
+  if(sellGrid) sellGrid.onclick=e=>{
+    const b=e.target.closest('[data-p]'); if(!b)return;
+    const id=b.dataset.p;
+    ui.counter[id]=(ui.counter[id]||0)+1;
+    const q=ui.counter[id];
+    const badge=b.querySelector('.qbadge');
+    badge.style.display='flex'; badge.textContent=q;
+    badge.classList.remove('pulse'); void badge.offsetWidth; badge.classList.add('pulse');
+    b.classList.remove('pulse'); void b.offsetWidth; b.classList.add('pulse');
+    updateCharge();
+  };
+  const updateCharge=()=>{
+    const entries=Object.entries(ui.counter);
+    const bar=$('#chargeBar');
+    if(!entries.length){ bar.classList.remove('show'); return; }
+    let q=0,rev=0,prof=0;
+    entries.forEach(([pid,qq])=>{ const p=state.products.find(x=>x.id===pid); if(!p)return;
+      const c=productCost(p); q+=qq; rev+=qq*p.price; prof+=qq*(p.price-c); });
+    $('#cbInfo').innerHTML=`<b>${q}</b> adet · ciro <b>${fmt0(rev)}</b> · kâr <b style="color:#A9C58F">${fmt0(prof)}</b>`;
+    bar.classList.add('show');
+  };
+  updateCharge();
+  $('#cbClear').onclick=()=>{ ui.counter={}; renderSales(); };
+  $('#cbGo').onclick=()=>{
+    const entries=Object.entries(ui.counter).filter(([,q])=>q>0);
+    if(!entries.length)return;
+    let q=0,rev=0;
+    entries.forEach(([pid,qq])=>{
+      const p=state.products.find(x=>x.id===pid); if(!p)return;
+      state.sales.push({id:uid(),date:ui.saleDate,productId:pid,name:p.name,qty:qq,unitPrice:p.price,unitCost:Math.round(productCost(p)*100)/100});
+      q+=qq; rev+=qq*p.price;
+    });
+    ui.counter={}; save(); renderSales();
+    toast(`${q} adet işlendi · ${fmt0(rev)}`,'check',true);
+  };
+  v.querySelectorAll('[data-delsale]').forEach(b=>{
+    b.onclick=()=>{
+      const pid=b.dataset.delsale;
+      const g2=g[pid];
+      confirmDialog('Kaydı sil',`${dateLabel(date)} günündeki «${g2.name}» satışlarının tamamı (${g2.qty} adet) silinecek.`,'Sil',()=>{
+        state.sales=state.sales.filter(s=>!(s.date===date&&s.productId===pid));
+        save(); renderSales(); toast('Kayıt silindi.','trash-2');
+      });
+    };
+  });
+}
+
+/* ============ ANALİZ ============ */
+function renderAnalytics(){
+  const v=$('#view');
+  const days=ui.period==='today'?1:ui.period;
+  const label=ui.period==='today'?'Bugün':`Son ${ui.period} gün`;
+  const an=analytics(days);
+  const margin=an.rev>0?an.profit/an.rev*100:0;
+  const avg=an.qty>0?an.rev/an.qty:0;
+  const maxQ=Math.max(...an.tops.map(t=>t.qty),1);
+  const insights=buildInsights(an);
+  const capDefault='Detay için bir güne dokunun.';
+
+  v.innerHTML=`
+    <div class="page-head">
+      <div><div class="eyebrow">Performans</div><h2 class="serif">Rakamlar</h2></div>
+      <div class="seg" id="pSeg">
+        <button data-p="today" class="${ui.period==='today'?'on':''}">Bugün</button>
+        <button data-p="7" class="${ui.period===7?'on':''}">7 Gün</button>
+        <button data-p="30" class="${ui.period===30?'on':''}">30 Gün</button>
+      </div>
+    </div>
+
+    <section class="sum-block">
+      <div class="sum-main">
+        <div class="eyebrow">Brüt Kâr · ${label}</div>
+        <div class="sum-big serif" style="color:${an.profit>=0?'var(--ink)':'var(--accent)'}">${fmt0(an.profit)}</div>
+        <p class="sub">Ortalama brüt marj <b style="color:${marginColor(margin)}">${pct(margin)}</b>${an.qty?` · ${an.qty} adet`:''}</p>
+      </div>
+      <div class="sum-side">
+        <div class="ss-row"><span>Ciro</span><b>${fmt0(an.rev)}</b></div>
+        <div class="ss-row"><span>Malzeme maliyeti</span><b>${fmt0(an.cost)}</b></div>
+        <div class="ss-row"><span>Satış adedi</span><b>${an.qty}</b></div>
+        <div class="ss-row"><span>Ortalama sepet</span><b>${fmt0(avg)}</b></div>
+      </div>
+    </section>
+
+    <section>
+      <div class="sec-head"><h3 class="serif">Günlük akış</h3><span class="sub">son 14 gün · kısmi = kâr</span></div>
+      <div id="chartWrap">${chartSVG(an.daily)}</div>
+      <div class="chart-cap" id="chartCap">${capDefault}</div>
+    </section>
+
+    <section>
+      <div class="sec-head"><h3 class="serif">Ürün sıralaması</h3><span class="sub">${label.toLowerCase()} · adete göre</span></div>
+      ${an.tops.length? an.tops.map(t=>`
+        <div class="tp">
+          <div class="tp-h"><b>${t.name}</b><span>${t.qty} adet</span></div>
+          <div class="tp-bar"><i style="width:${t.qty/maxQ*100}%"></i></div>
+          <div class="tp-m">
+            <span>Ciro <b>${fmt0(t.rev)}</b></span>
+            <span>Kâr <b style="color:var(--green)">${fmt0(t.profit)}</b></span>
+            <span>Marj <b>${pct(t.rev?t.profit/t.rev*100:0)}</b></span>
+          </div>
+        </div>`).join('')
+      : `<div class="empty" style="padding:22px">Bu dönemde kayıtlı satış yok.</div>`}
+    </section>
+
+    <section>
+      <div class="sec-head"><h3 class="serif">İçgörüler</h3><span class="sub">otomatik değerlendirme</span></div>
+      <div>${insights.map(i=>`
+        <div class="ins"><span class="ins-ic ${i.tone}"><i data-lucide="${i.icon}"></i></span><p>${i.text}</p></div>`).join('')}</div>
+    </section>`;
+
+  $('#pSeg').onclick=e=>{ const b=e.target.closest('[data-p]'); if(!b)return;
+    ui.period=b.dataset.p==='today'?'today':+b.dataset.p; renderAnalytics(); icons(); };
+  $('#chartWrap').onclick=e=>{
+    const bar=e.target.closest('g.bar'); if(!bar)return;
+    const d=an.daily[+bar.dataset.di];
+    $('#chartCap').innerHTML=`<b>${dateLabel(d.date)}</b> · ${d.qty} adet · ciro <b>${fmt0(d.rev)}</b> · kâr <b style="color:var(--green)">${fmt0(d.profit)}</b>`;
+  };
+}
+function chartSVG(daily){
+  const W=720,H=210,pl=6,pr=6,pt=10,pb=26;
+  const iw=W-pl-pr, ih=H-pt-pb;
+  const max=Math.max(...daily.map(d=>d.rev),100);
+  const bw=iw/daily.length;
+  let s='';
+  daily.forEach((d,i)=>{
+    const x=pl+i*bw+bw*0.2, w=bw*0.6;
+    if(d.rev>0){
+      const rh=Math.max(d.rev/max*ih,3), y=pt+ih-rh;
+      const ph=Math.max(rh*(d.profit/d.rev),1);
+      s+=`<g class="bar" data-di="${i}">
+        <rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${rh.toFixed(1)}" rx="3.5" fill="#C4432B"/>
+        <rect x="${x.toFixed(1)}" y="${(y+rh-ph).toFixed(1)}" width="${w.toFixed(1)}" height="${ph.toFixed(1)}" rx="2.5" fill="#262019"/>
+      </g>`;
+    }else{
+      s+=`<rect x="${x.toFixed(1)}" y="${pt+ih-2}" width="${w.toFixed(1)}" height="2" rx="1" fill="#D3C7AD"/>`;
+    }
+    if(i%3===0||i===daily.length-1){
+      const dl=new Date(d.date+'T12:00:00');
+      s+=`<text x="${(x+w/2).toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="10" fill="#8A7E6C" font-family="Space Grotesk">${dl.getDate()}.${dl.getMonth()+1}</text>`;
+    }
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">${s}</svg>`;
+}
+function buildInsights(an){
+  const out=[];
+  if(!an.qty) return [{icon:'info',tone:'info',text:'Bu dönemde kayıtlı satış yok. Satış sekmesinden işlem girerek analizi besleyin.'}];
+  const top=an.tops[0];
+  if(top) out.push({icon:'flame',tone:'warn',text:`«${top.name}» ${top.qty} adet ile en çok satılan ürün (ciro ${fmt0(top.rev)}).`});
+  const mostP=[...an.tops].sort((a,b)=>b.profit-a.profit)[0];
+  if(mostP&&an.profit>0) out.push({icon:'coins',tone:'good',text:`En çok kârı «${mostP.name}» getirdi: ${fmt0(mostP.profit)} — toplam kârın %${Math.round(mostP.profit/an.profit*100)}'i.`});
+  state.products.forEach(p=>{
+    const m=metrics(p);
+    if(m.margin<40) out.push({icon:'triangle-alert',tone:'warn',text:`«${p.name}» marjı yalnızca ${pct(m.margin)} (maliyet ${fmt(m.cost)} / fiyat ${fmt(p.price)}). Fiyatı ya da porsiyonları gözden geçirin.`});
+  });
+  const soldIds=new Set(an.sales.map(s=>s.productId));
+  const silent=state.products.filter(p=>!soldIds.has(p.id));
+  if(silent.length&&state.products.length>1)
+    out.push({icon:'info',tone:'info',text:`${silent.map(p=>'«'+p.name+'»').join(', ')} bu dönemde hiç satılmadı — menüden çıkarmayı düşünün.`});
+  /* DÜZELTME: "margin" burada tanımlı değildi — başka fonksiyondaki değişken kullanılmıştı; şimdi kendi değeri hesaplanıyor */
+  const margin=an.rev>0?an.profit/an.rev*100:0;
+  if(margin>=50) out.push({icon:'lightbulb',tone:'good',text:`Genel brüt marjınız ${pct(margin)} — sandviç işletmeleri için sağlıklı bir aralıkta.`});
+  return out.slice(0,6);
+}
+
+/* ============ VERİ YÖNETİMİ ============ */
+function openDataModal(){
+  openModal(`
+    <div class="sheet-head"><h3 class="serif">Veri Yönetimi</h3><button class="icon-btn" data-close><i data-lucide="x"></i></button></div>
+    <p class="hint" style="margin-top:10px">Tüm malzeme, ürün ve satış verileri yalnızca bu cihazın tarayıcısında saklanır. Telefon değiştirirken ya da tarayıcı verisi temizlenirken kaybolmaması için düzenli yedek alın.</p>
+    <div class="sheet-actions" style="margin-top:16px">
+      <button class="btn ghost" id="dExp"><i data-lucide="download"></i>JSON İndir</button>
+      <button class="btn ghost" id="dImp"><i data-lucide="upload"></i>JSON Yükle</button>
+      <input type="file" id="dFile" accept=".json,application/json" hidden>
+    </div>
+    <div class="f-div"></div>
+    <label class="f" style="color:var(--accent)">Tehlikeli bölge</label>
+    <div class="sheet-actions" style="margin-top:8px">
+      <button class="btn ghost" id="dSeed">Örnek verilere dön</button>
+      <button class="btn danger" id="dWipe">Tümünü sil</button>
+    </div>`);
+  $('#dExp').onclick=exportJSON;
+  $('#dImp').onclick=()=>$('#dFile').click();
+  $('#dFile').onchange=e=>{
+    const f=e.target.files[0]; if(!f)return;
+    const rd=new FileReader();
+    rd.onload=()=>{
+      try{
+        const d=JSON.parse(rd.result);
+        if(!Array.isArray(d.ingredients)||!Array.isArray(d.products)||!Array.isArray(d.sales)) throw 0;
+        state=d; save(); closeModal(); renderView(); toast('Yedek geri yüklendi.','check',true);
+      }catch(_){ toast('Dosya okunamadı — geçerli bir PaninoTurco yedeği değil.','triangle-alert'); }
+    };
+    rd.readAsText(f);
+  };
+  $('#dSeed').onclick=()=>confirmDialog('Örnek verilere dön','Mevcut tüm malzeme, ürün ve satışlar silinip örnek verilerle değiştirilecek.','Sıfırla',()=>{
+    state=fresh(); save(); closeModal(); renderView(); toast('Örnek veriler yüklendi.','check',true);
+  });
+  $('#dWipe').onclick=()=>confirmDialog('Tüm verileri sil','Malzemeler, ürünler ve tüm satış kayıtları kalıcı olarak silinecek.','Hepsini sil',()=>{
+    state={ingredients:[],products:[],sales:[]}; save(); closeModal(); renderView(); toast('Tüm veriler silindi.','trash-2');
+  });
+}
+function exportJSON(){
+  const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='paninoturco-yedek-'+isoLocal()+'.json';
+  a.click(); URL.revokeObjectURL(a.href);
+  toast('Yedek dosyası indirildi.','download',true);
+}
+
+/* ============ başlat ============ */
+renderNav(); renderView();
+if(lsGet(LS+'_hi')===null){
+  lsSet(LS+'_hi','1');
+  setTimeout(()=>toast('Örnek verilerle başladık — Veri menüsünden temizleyip kendi işletmenizi kurabilirsiniz.','info'),700);
+}
+if(storageBlocked){
+  setTimeout(()=>toast('Tarayıcı depolamasına erişilemiyor — veriler sayfayı kapatınca silinir.','triangle-alert'),1500);
+}
+</script>
+</body>
+</html>

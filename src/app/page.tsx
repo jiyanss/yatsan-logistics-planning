@@ -13,8 +13,6 @@ import AylikView from '@/components/sevkiyat/views/AylikView';
 import KarsilastirmaView from '@/components/sevkiyat/views/KarsilastirmaView';
 import MusView from '@/components/sevkiyat/views/MusView';
 import YasamView from '@/components/sevkiyat/views/YasamView';
-import ParsiyelView from '@/components/sevkiyat/views/ParsiyelView';
-import KapasiteView from '@/components/sevkiyat/views/KapasiteView';
 import HedefView from '@/components/sevkiyat/views/HedefView';
 import RaporView from '@/components/sevkiyat/views/RaporView';
 import YonetimRaporlari from '@/components/sevkiyat/views/YonetimRaporlari';
@@ -72,8 +70,6 @@ export default function Page() {
               {view === 'karsilastirma' && <KarsilastirmaView />}
               {view === 'mus' && <MusView />}
               {view === 'yasam' && <YasamView />}
-              {view === 'parsiyel' && <ParsiyelView />}
-              {view === 'kapasite' && <KapasiteView />}
               {view === 'hedef' && <HedefView />}
               {view === 'rapor' && <RaporView />}
               {view === 'yrapor' && <YonetimRaporlari />}

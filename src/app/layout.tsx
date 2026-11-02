@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: 'YATSAN · İhracat Yükleme Paneli',
   description:
-    'İhracat yükleme analizi: araç, m³, müşteri ABC, yaşam döngüsü, kapasite doluluk, hedef takibi ve karşılaştırmalı raporlar.',
+    'İhracat yükleme analizi: araç, m³, müşteri ABC, yaşam döngüsü, hedef takibi ve karşılaştırmalı raporlar.',
   keywords: ['ihracat', 'sevkiyat', 'yükleme', 'analiz', 'dashboard', 'YATSAN'],
   authors: [{ name: 'YATSAN' }],
 };

@@ -1,7 +1,7 @@
 /* Navigasyon yapılandırması */
 import {
   LayoutDashboard, BarChart3, CalendarRange, GitCompareArrows, Users, HeartPulse,
-  Package, Boxes, Target, FileText, UploadCloud, Presentation, Contact, type LucideIcon,
+  Target, FileText, UploadCloud, Presentation, Contact, type LucideIcon,
 } from 'lucide-react';
 import type { ViewId } from '@/lib/sevkiyat/types';
 
@@ -32,8 +32,6 @@ export const NAV: NavGroup[] = [
       { id: 'karsilastirma', label: 'Karşılaştırma', icon: GitCompareArrows, desc: 'Yıl-yıl kıyas, Pareto, KPI delta' },
       { id: 'mus', label: 'Müşteriler (ABC)', icon: Users, desc: 'ABC sınıflandırma ve Pareto' },
       { id: 'yasam', label: 'Yaşam Döngüsü', icon: HeartPulse, desc: 'Ritim, büyüme matrisi, yeni/kayıp' },
-      { id: 'parsiyel', label: 'Parsiyel', icon: Package, desc: 'Konsolidasyon fırsatları' },
-      { id: 'kapasite', label: 'Kapasite Doluluk', icon: Boxes, desc: 'Gerçek vs teorik m³' },
       { id: 'hedef', label: 'Hedefler', icon: Target, desc: 'Hedef vs gerçekleşen' },
       { id: 'rapor', label: 'Detay Tablolar', icon: FileText, desc: 'Haftalık, günlük ve tüm kayıtlar' },
       { id: 'yrapor', label: 'Yönetim Raporları', icon: Presentation, desc: 'Grafik ağırlıklı raporlar + PDF çıktı' },
@@ -55,8 +53,6 @@ export const VIEW_TITLES: Record<ViewId, { title: string; sub: string }> = {
   karsilastirma: { title: 'Karşılaştırma', sub: 'Yıl-yıl kıyas, Pareto ve KPI delta' },
   mus: { title: 'Müşteriler (ABC)', sub: 'm³ payına göre sınıflandırma' },
   yasam: { title: 'Müşteri Yaşam Döngüsü', sub: 'Ritim, büyüme ve kayıp analizi' },
-  parsiyel: { title: 'Parsiyel Analizi', sub: 'Konsolidasyon fırsatları' },
-  kapasite: { title: 'Kapasite Doluluk', sub: 'Tip bazında gerçek vs teorik m³' },
   hedef: { title: 'Hedef vs Gerçekleşen', sub: 'Aylık araç ve m³ hedefleri' },
   rapor: { title: 'Detay Raporları', sub: 'Haftalık, günlük ve tüm kayıtlar' },
   yrapor: { title: 'Yönetim Raporları', sub: 'Grafik ağırlıklı yönetici raporları · PDF çıktılı' },

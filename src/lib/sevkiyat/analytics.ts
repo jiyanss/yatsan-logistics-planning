@@ -1,7 +1,7 @@
-/* Analitik motor — agregasyonlar, ABC, yaşam döngüsü, kapasite, ısı haritası */
+/* Analitik motor — agregasyonlar, ABC, yaşam döngüsü, ısı haritası */
 import type {
   Row, GroupSum, WeeklyAgg, MonthlyAgg, DailyAgg, CustAgg, LifeRow,
-  CapRow, GrowthRow, FlowMonth, ConsOp, Segment,
+  GrowthRow, FlowMonth, Segment,
 } from './types';
 import { GUNLER, nf1, uniq, pad2, isoDay, ymOf, maxDate } from './core';
 import { isoWeek } from './dates';
@@ -186,24 +186,6 @@ export function matrixData(rows: Row[]): {
   return { deps, tips, cell };
 }
 
-/** Kapasite doluluk satırları */
-export function capacityRows(rows: Row[], caps: Record<string, number>): CapRow[] {
-  const cell: Record<string, { adet: number; m3: number }> = {};
-  rows.forEach((r) => {
-    if (!cell[r.tip]) cell[r.tip] = { adet: 0, m3: 0 };
-    cell[r.tip].adet += r.adet;
-    cell[r.tip].m3 += r.m3;
-  });
-  return Object.keys(cell)
-    .map((tip) => {
-      const o = cell[tip];
-      const cap = caps[tip] != null ? caps[tip] : 68;
-      const theo = o.adet * cap;
-      return { tip, adet: o.adet, m3: o.m3, cap, theo, util: theo ? (o.m3 / theo) * 100 : 0 };
-    })
-    .sort((a, b) => b.m3 - a.m3);
-}
-
 /** Takvim ısı haritası: gün → {m3, adet} */
 export function heatmapData(rows: Row[]): Map<string, { m3: number; adet: number }> {
   const dayMap = new Map<string, { m3: number; adet: number }>();
@@ -322,37 +304,6 @@ export function flowMonths(data: Row[], refD: Date | null): FlowMonth[] {
       return { ym, yeni, kayip, aktif: aktif.size };
     })
     .reverse();
-}
-
-/** Parsiyel konsolidasyon fırsatları */
-export function parsiyelConsolidation(data: Row[], caps: Record<string, number>): ConsOp[] {
-  const par = data.filter((r) => r.tip.toLocaleLowerCase('tr-TR').indexOf('parsiyel') >= 0);
-  const cap = caps['KOMPLE TIR'] || 90;
-  const wk = new Map<string, ConsOp>();
-  par.forEach((r) => {
-    if (!r.tarih) return;
-    const k = r.yil + '|' + r.hafta;
-    if (!wk.has(k)) wk.set(k, { yil: r.yil || 0, hafta: r.hafta || 0, n: 0, adet: 0, m3: 0, custs: new Set(), min: null, max: null, pot: 0, save: 0 });
-    const o = wk.get(k)!;
-    o.n++;
-    o.adet += r.adet;
-    o.m3 += r.m3;
-    o.custs.add(r.musteri);
-    const t = r.tarih.getTime();
-    if (o.min == null || t < o.min) o.min = t;
-    if (o.max == null || t > o.max) o.max = t;
-  });
-  return Array.from(wk.values())
-    .filter((o) => o.n >= 2)
-    .map((o) => {
-      const pot = Math.max(1, Math.ceil(o.m3 / cap));
-      return { ...o, pot, save: Math.max(0, o.adet - pot) };
-    })
-    .sort((a, b) => b.save - a.save || b.m3 - a.m3);
-}
-
-export function parsiyelRows(data: Row[]): Row[] {
-  return data.filter((r) => r.tip.toLocaleLowerCase('tr-TR').indexOf('parsiyel') >= 0);
 }
 
 export { nf1, pad2, isoWeek };

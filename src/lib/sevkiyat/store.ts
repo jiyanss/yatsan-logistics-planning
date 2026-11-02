@@ -52,7 +52,6 @@ interface SevkiyatState {
 
   setFilters: (patch: Partial<FilterState>) => void;
   resetFilters: () => void;
-  setCaps: (caps: Record<string, number>) => void;
   setView: (v: ViewId) => void;
   savePreset: (name: string) => boolean;
   applyPreset: (i: number) => void;
@@ -325,13 +324,6 @@ export const useSevkiyat = create<SevkiyatState>((set, get) => ({
 
   setFilters: (patch) => set({ filters: { ...get().filters, ...patch } }),
   resetFilters: () => set({ filters: { ...DEFAULT_FILTERS } }),
-
-  setCaps: (caps) => {
-    set({ caps });
-    try {
-      localStorage.setItem(LS_CAPS, JSON.stringify(caps));
-    } catch { /* yoksay */ }
-  },
 
   setView: (v) => set({ view: v }),
 

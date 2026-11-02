@@ -8,13 +8,13 @@ import EChart, { baseChart } from './EChart';
 import { useTheme } from 'next-themes';
 import { useSevkiyat, applyFilters } from '@/lib/sevkiyat/store';
 import { collectAlerts } from '@/lib/sevkiyat/alerts';
-import { weeklyAgg, monthlyAgg, groupSum, custAgg, custLifeRows, capacityRows, parsiyelRows } from '@/lib/sevkiyat/analytics';
+import { weeklyAgg, monthlyAgg, groupSum, custAgg, custLifeRows } from '@/lib/sevkiyat/analytics';
 import { ymLabel, nf0, nf1, fmtDate, maxDate } from '@/lib/sevkiyat/core';
 import { cn } from '@/lib/utils';
 import type { ViewId } from '@/lib/sevkiyat/types';
 
 export default function Overview() {
-  const { data, filters, targets, caps, setView } = useSevkiyat();
+  const { data, filters, targets, setView } = useSevkiyat();
   const { resolvedTheme } = useTheme();
   const dark = resolvedTheme === 'dark';
   const th = baseChart(dark);
@@ -39,8 +39,6 @@ export default function Overview() {
   const tipAgg = useMemo(() => Array.from(groupSum(rows, (r) => r.tip).entries()).sort((a, b) => b[1].adet - a[1].adet), [rows]);
   const custs = useMemo(() => custAgg(rows), [rows]);
   const life = useMemo(() => custLifeRows(data), [data]);
-  const par = useMemo(() => parsiyelRows(data), [data]);
-  const capRows = useMemo(() => capacityRows(rows, caps), [rows, caps]);
 
   // Hedef (son tarihin ayı)
   const refD = maxDate(rows);
@@ -50,17 +48,10 @@ export default function Overview() {
   const mAdet = monthRows.reduce((s, r) => s + r.adet, 0);
   const mM3 = monthRows.reduce((s, r) => s + r.m3, 0);
 
-  const parConsWeeks = useMemo(() => {
-    const wk = new Set<string>();
-    par.forEach((r) => { if (r.tarih) wk.add(r.yil + '|' + r.hafta); });
-    return wk.size;
-  }, [par]);
-
   if (!data.length) return null;
 
   const wTotal = weekly.reduce((s, w) => s + w.adet, 0);
   const mTotal = monthly.reduce((s, m) => s + m.adet, 0);
-  const avgUtil = capRows.length ? capRows.reduce((s, c) => s + c.util, 0) / capRows.length : 0;
   const nRisk = life.list.filter((o) => o.status === 'risk').length;
   const nWatch = life.list.filter((o) => o.status === 'watch').length;
 
@@ -218,27 +209,6 @@ export default function Overview() {
           </div>
         </Tile>
 
-        <Tile onClick={() => setView('parsiyel')} title="Parsiyel" go="parsiyel">
-          <div className="text-xl font-extrabold tracking-tight">{par.length ? nf0.format(par.reduce((s, r) => s + r.adet, 0)) + ' araç' : '—'}</div>
-          <div className="text-[11px] text-muted-foreground">{nf1.format(par.reduce((s, r) => s + r.m3, 0))} m³ · {new Set(par.map((r) => r.musteri)).size} müşteri</div>
-          <div className="mt-auto pt-1.5">
-            <span className={cn('rounded-md px-1.5 py-0.5 text-[10.5px] font-bold ring-1',
-              parConsWeeks >= 2 ? 'bg-amber-500/12 text-amber-600 dark:text-amber-400 ring-amber-500/25' : 'bg-emerald-500/12 text-emerald-600 dark:text-emerald-400 ring-emerald-500/25')}>
-              {parConsWeeks} hafta konsolidasyon adayı
-            </span>
-          </div>
-        </Tile>
-
-        <Tile onClick={() => setView('kapasite')} title="Doluluk" go="kapasite">
-          <div className="text-xl font-extrabold tracking-tight">{nf1.format(avgUtil)}%</div>
-          <div className="text-[11px] text-muted-foreground">ortalama doluluk</div>
-          <div className="space-y-1.5 mt-auto">
-            {capRows.slice(0, 3).map((c) => (
-              <BarRow key={c.tip} name={c.tip} p={c.util} />
-            ))}
-          </div>
-        </Tile>
-
         <Tile onClick={() => setView('rapor')} title="Detay Raporlar" go="rapor">
           <div className="text-xl font-extrabold tracking-tight">10 sayfa</div>
           <div className="text-[11px] text-muted-foreground leading-relaxed">
@@ -299,19 +269,6 @@ function BarMeter({ label, p, color, sub }: { label: string; p: number; color: s
       <div className="h-1.5 rounded-full bg-border overflow-hidden">
         <div className="h-full rounded-full" style={{ width: Math.min(100, p) + '%', background: color }} />
       </div>
-    </div>
-  );
-}
-
-function BarRow({ name, p }: { name: string; p: number }) {
-  const c = p >= 85 ? '#10b981' : p >= 60 ? '#f59e0b' : '#ef4444';
-  return (
-    <div className="grid grid-cols-[86px_1fr_36px] gap-1.5 items-center text-[10.5px]">
-      <span className="font-medium truncate">{name}</span>
-      <div className="h-1.5 rounded-full bg-border overflow-hidden">
-        <div className="h-full rounded-full" style={{ width: Math.min(100, p) + '%', background: c }} />
-      </div>
-      <span className="text-right text-muted-foreground tabular-nums">{nf0.format(p)}%</span>
     </div>
   );
 }

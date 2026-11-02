@@ -65,8 +65,6 @@ export type ViewId =
   | 'karsilastirma'
   | 'mus'
   | 'yasam'
-  | 'parsiyel'
-  | 'kapasite'
   | 'hedef'
   | 'rapor'
   | 'yrapor'
@@ -159,30 +157,10 @@ export interface FlowMonth {
   aktif: number;
 }
 
-export interface CapRow {
-  tip: string;
-  adet: number;
-  m3: number;
-  cap: number;
-  theo: number;
-  util: number;
-}
-
 export interface AlertItem {
   lvl: 'err' | 'warn' | 'ok';
   txt: string;
   view: ViewId;
 }
 
-export interface ConsOp {
-  yil: number;
-  hafta: number;
-  n: number;
-  adet: number;
-  m3: number;
-  custs: Set<string>;
-  min: number | null;
-  max: number | null;
-  pot: number;
-  save: number;
-}
+

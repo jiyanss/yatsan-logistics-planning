@@ -11,7 +11,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Ship, RefreshCw, Sun, Moon, LogOut, Menu, Download, FileDown,
-  CircleCheck, CloudUpload, Loader2, UserRound, CloudOff, FlaskConical,
+  CircleCheck, CloudUpload, Loader2, UserRound, CloudOff, FlaskConical, Eye,
 } from 'lucide-react';
 import { useSevkiyat } from '@/lib/sevkiyat/store';
 import { NAV } from './nav';
@@ -23,7 +23,7 @@ import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
 export default function Shell({ children }: { children: React.ReactNode }) {
-  const { view, setView, syncState, syncError, data, fullReload, user, signOutUser, demoMode, exitDemo } = useSevkiyat();
+  const { view, setView, syncState, syncError, data, fullReload, user, signOutUser, demoMode, exitDemo, misafir } = useSevkiyat();
   const { theme, setTheme } = useTheme();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [reloading, setReloading] = useState(false);
@@ -53,15 +53,15 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     toast({ title: 'Excel raporu indirildi', description: fname + ' (10 sayfa)' });
   };
 
-  const pill = syncPill(syncState, data.length, syncError, demoMode);
+  const pill = syncPill(syncState, data.length, syncError, demoMode, misafir);
 
   return (
     <div className="min-h-screen flex bg-background">
       {/* Masaüstü kenar çubuğu */}
       <aside className="hidden lg:flex flex-col w-60 shrink-0 border-r border-sidebar-border bg-sidebar text-sidebar-foreground sticky top-0 h-screen">
         <Brand />
-        <SidebarNav current={view} go={go} />
-        <SidebarFooter demoMode={demoMode} exitDemo={exitDemo} />
+        <SidebarNav current={view} go={go} misafir={misafir} />
+        <SidebarFooter demoMode={demoMode} exitDemo={exitDemo} misafir={misafir} />
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0">
@@ -78,7 +78,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               <SheetTitle className="sr-only">Menü</SheetTitle>
               <div className="h-full flex flex-col">
                 <Brand />
-                <SidebarNav current={view} go={go} />
+                <SidebarNav current={view} go={go} misafir={misafir} />
               </div>
             </SheetContent>
           </Sheet>
@@ -140,7 +140,9 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-52">
-                <DropdownMenuLabel className="truncate">{demoMode ? 'Demo modu' : user || 'Misafir'}</DropdownMenuLabel>
+                <DropdownMenuLabel className="truncate">
+                  {demoMode ? 'Demo modu' : misafir ? 'Misafir · salt okunur' : user || 'Misafir'}
+                </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {demoMode ? (
                   <DropdownMenuItem onClick={exitDemo}>
@@ -176,14 +178,17 @@ function Brand() {
   );
 }
 
-function SidebarNav({ current, go }: { current: string; go: (id: ViewId) => void }) {
+function SidebarNav({ current, go, misafir }: { current: string; go: (id: ViewId) => void; misafir: boolean }) {
   return (
     <nav className="flex-1 overflow-y-auto nice-scroll py-3 px-2.5 space-y-4">
-      {NAV.map((g) => (
-        <div key={g.title}>
-          <div className="px-2.5 mb-1.5 text-[10px] font-bold uppercase tracking-wider text-violet-300/50">{g.title}</div>
-          <ul className="space-y-0.5">
-            {g.items.map((it) => {
+      {NAV.map((g) => {
+        const items = misafir ? g.items.filter((it) => it.id !== 'veri') : g.items;
+        if (!items.length) return null;
+        return (
+          <div key={g.title}>
+            <div className="px-2.5 mb-1.5 text-[10px] font-bold uppercase tracking-wider text-violet-300/50">{g.title}</div>
+            <ul className="space-y-0.5">
+              {items.map((it) => {
               const active = current === it.id;
               return (
                 <li key={it.id}>
@@ -206,16 +211,23 @@ function SidebarNav({ current, go }: { current: string; go: (id: ViewId) => void
                 </li>
               );
             })}
-          </ul>
-        </div>
-      ))}
+            </ul>
+          </div>
+        );
+      })}
     </nav>
   );
 }
 
-function SidebarFooter({ demoMode, exitDemo }: { demoMode: boolean; exitDemo: () => void }) {
+function SidebarFooter({ demoMode, exitDemo, misafir }: { demoMode: boolean; exitDemo: () => void; misafir: boolean }) {
   return (
     <div className="p-3 border-t border-sidebar-border shrink-0">
+      {misafir && (
+        <div className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-[11.5px] bg-sky-500/10 text-sky-300 ring-1 ring-sky-500/30">
+          <Eye className="w-3.5 h-3.5 shrink-0" />
+          Misafir modu — salt okunur
+        </div>
+      )}
       {demoMode && (
         <button
           onClick={exitDemo}
@@ -229,11 +241,18 @@ function SidebarFooter({ demoMode, exitDemo }: { demoMode: boolean; exitDemo: ()
   );
 }
 
-function syncPill(state: string, count: number, err: string, demoMode: boolean) {
+function syncPill(state: string, count: number, err: string, demoMode: boolean, misafir: boolean) {
   if (demoMode) {
     return (
       <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold bg-amber-500/15 text-amber-600 dark:text-amber-400 ring-1 ring-amber-500/30">
         <FlaskConical className="w-3 h-3" /> Demo · {nf0.format(count)} kayıt
+      </span>
+    );
+  }
+  if (misafir) {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold bg-sky-500/12 text-sky-600 dark:text-sky-400 ring-1 ring-sky-500/25">
+        <Eye className="w-3 h-3" /> Misafir · {nf0.format(count)} kayıt
       </span>
     );
   }

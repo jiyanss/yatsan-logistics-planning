@@ -2,11 +2,11 @@
   "rules": {
     "sevkiyat": {
       ".read": "auth != null",
-      ".write": "auth != null"
+      ".write": "auth != null && auth.token.firebase.sign_in_provider != 'anonymous'"
     },
     "meta": {
       ".read": "auth != null",
-      ".write": "auth != null"
+      ".write": "auth != null && auth.token.firebase.sign_in_provider != 'anonymous'"
     }
   }
 }

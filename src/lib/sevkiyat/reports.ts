@@ -2,7 +2,7 @@
    Mevcut veri yükleme/senkron mantığına (excel, id, firebase, store) dokunmaz. */
 import type { Row } from './types';
 import { monthlyAgg, custAgg, weekdayData } from './analytics';
-import { ymOf, ymLabel, norm, uniq } from './core';
+import { ymOf, ymLabel, norm, uniq, maxDate, AYLAR_UZUN } from './core';
 
 /* ---------- KPI ---------- */
 
@@ -230,6 +230,9 @@ export interface MusteriKarti {
   degYil: number | null;
   degPrevYil: number | null;
   yeniMi: boolean; // önceki yılda verisi yok
+  sonYukleme: Date | null;
+  ritim: 'ok' | 'watch' | 'risk' | 'tek';
+  enYogunAy: string;
 }
 
 /**
@@ -242,6 +245,20 @@ export function musteriKartlari(data: Row[], seciliYil: number | null): MusteriK
   const curY = seciliYil != null ? seciliYil : years.length ? years[years.length - 1] : null;
   const prevYil = seciliYil != null ? seciliYil - 1 : years.length >= 2 ? years[years.length - 1] - 1 : null;
 
+  /* yaşam döngüsü izleme: ilk/son yükleme, farklı gün sayısı, aylık yoğunluk */
+  const track = new Map<string, { ilkT: number | null; sonT: number | null; days: Set<string>; aylar: number[] }>();
+  data.forEach((r) => {
+    if (!r.tarih) return;
+    let t = track.get(r.musteri);
+    if (!t) { t = { ilkT: null, sonT: null, days: new Set<string>(), aylar: new Array(12).fill(0) }; track.set(r.musteri, t); }
+    const ts = r.tarih.getTime();
+    if (t.ilkT == null || ts < t.ilkT) t.ilkT = ts;
+    if (t.sonT == null || ts > t.sonT) t.sonT = ts;
+    t.days.add(r.tarihStr);
+    t.aylar[r.tarih.getMonth()] += r.m3;
+  });
+  const refT = maxDate(data)?.getTime() ?? null;
+
   const map = new Map<string, MusteriKarti>();
   data.forEach((r) => {
     let o = map.get(r.musteri);
@@ -250,6 +267,7 @@ export function musteriKartlari(data: Row[], seciliYil: number | null): MusteriK
         name: r.musteri, cls: 'C', m3: 0, adet: 0, sefer: 0, pay: 0, ortSefer: 0,
         kompleTIR: 0, parsiyelTIR: 0, konteyner: 0, yillar: [],
         degisim: null, degYil: curY, degPrevYil: prevYil, yeniMi: false,
+        sonYukleme: null, ritim: 'tek', enYogunAy: '—',
       };
       map.set(r.musteri, o);
     }
@@ -283,6 +301,21 @@ export function musteriKartlari(data: Row[], seciliYil: number | null): MusteriK
       const p = o.yillar.find((y) => y.yil === prevYil);
       if (p && p.m3 > 0) o.degisim = ((o.m3 - p.m3) / p.m3) * 100;
       else if (o.m3 > 0) o.yeniMi = true;
+    }
+    /* ritim + son yükleme + en yoğun ay */
+    const t = track.get(o.name);
+    if (t && t.sonT != null) {
+      o.sonYukleme = new Date(t.sonT);
+      const days = t.days.size;
+      const avgInt = days >= 2 && t.ilkT != null ? (t.sonT - t.ilkT) / 864e5 / (days - 1) : null;
+      const gap = refT != null ? Math.max(0, Math.round((refT - t.sonT) / 864e5)) : null;
+      const eff = avgInt != null ? Math.max(avgInt, 5) : null;
+      o.ritim = days < 2 || eff == null || gap == null ? 'tek'
+        : gap <= Math.round(eff * 1.3) ? 'ok'
+          : gap <= Math.round(eff * 1.8) ? 'watch' : 'risk';
+      let mi = 0;
+      t.aylar.forEach((v, i) => { if (v > t.aylar[mi]) mi = i; });
+      o.enYogunAy = t.aylar[mi] > 0 ? AYLAR_UZUN[mi] : '—';
     }
   });
   return list;

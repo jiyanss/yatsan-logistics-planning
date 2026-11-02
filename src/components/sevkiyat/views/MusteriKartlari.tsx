@@ -6,13 +6,16 @@
    müşteri detay penceresi açılır. */
 import { useMemo, useState } from 'react';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ClsBadge, EmptyState } from '../Shared';
+import { ClsBadge, EmptyState, StatusBadge } from '../Shared';
 import CustomerDialog from '../CustomerDialog';
+import MusteriKarsilastirmaDialog from '../MusteriKarsilastirmaDialog';
+import { LIFE_LABEL } from '@/lib/sevkiyat/analytics';
 import { useSevkiyat } from '@/lib/sevkiyat/store';
 import { musteriKartlari, yilListesi } from '@/lib/sevkiyat/reports';
-import { asciiLower, nf0, nf1 } from '@/lib/sevkiyat/core';
-import { Search, ArrowUpRight, ArrowDownRight, Contact } from 'lucide-react';
+import { asciiLower, nf0, nf1, fmtDate } from '@/lib/sevkiyat/core';
+import { Search, ArrowUpRight, ArrowDownRight, Contact, Swords, X } from 'lucide-react';
 import type { Row } from '@/lib/sevkiyat/types';
 
 type Sira = 'm3' | 'adet' | 'degisim' | 'isim';
@@ -25,6 +28,13 @@ export default function MusteriKartlari() {
   const [yil, setYil] = useState<string>('all');
   const [sira, setSira] = useState<Sira>('m3');
   const [secili, setSecili] = useState<string | null>(null);
+  const [kars, setKars] = useState(false);
+  const [ksecim, setKsecim] = useState<string[]>([]);
+  const [karsAcik, setKarsAcik] = useState(false);
+
+  const toggleSec = (name: string) => {
+    setKsecim((cur) => (cur.includes(name) ? cur.filter((x) => x !== name) : cur.length >= 4 ? cur : [...cur, name]));
+  };
 
   const yillar = useMemo(() => yilListesi(data), [data]);
   const kartlar = useMemo(
@@ -83,22 +93,43 @@ export default function MusteriKartlari() {
             <SelectItem value="isim">İsme göre (A-Z)</SelectItem>
           </SelectContent>
         </Select>
+        {/* karşılaştırma modu */}
+        {kars ? (
+          <>
+            <Button size="sm" className="h-9 bg-violet-600 hover:bg-violet-700 text-white" disabled={ksecim.length < 2}
+              onClick={() => setKarsAcik(true)}>
+              <Swords className="w-4 h-4 mr-1.5" /> Karşılaştır ({ksecim.length})
+            </Button>
+            <Button variant="outline" size="sm" className="h-9" onClick={() => { setKars(false); setKsecim([]); }}>
+              <X className="w-4 h-4 mr-1" /> Kapat
+            </Button>
+          </>
+        ) : (
+          <Button variant="outline" size="sm" className="h-9" onClick={() => { setKars(true); setKsecim([]); }}>
+            <Swords className="w-4 h-4 mr-1.5" /> Karşılaştırma modu
+          </Button>
+        )}
       </div>
 
       <div className="text-[11.5px] text-muted-foreground">
         <b className="text-foreground">{nf0.format(list.length)}</b> müşteri
         {yil !== 'all' ? <> · <b className="text-foreground">{yil}</b> yılı toplamı: <b className="text-foreground">{nf1.format(kapsamM3)} m³</b></> : <> · tüm zamanlar: <b className="text-foreground">{nf1.format(kapsamM3)} m³</b></>}
         {list.length > GIDEREKEN && ' · ilk ' + GIDEREKEN + ' kart gösteriliyor (arama ile daraltın)'}
+        {kars && ksecim.length < 2 && ' · ⚔️ karşılaştırmak için 2-4 müşteri kartına tıklayın'}
       </div>
 
       {/* Kartlar */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3">
         {list.slice(0, GIDEREKEN).map((k) => (
-          <MusteriKart key={k.name} k={k} onOpen={() => setSecili(k.name)} />
+          <MusteriKart key={k.name} k={k} karsMode={kars} secili={ksecim.includes(k.name)}
+            onOpen={() => setSecili(k.name)} onToggle={() => toggleSec(k.name)} />
         ))}
       </div>
 
       {secili && <CustomerDialog name={secili} rows={data as Row[]} onClose={() => setSecili(null)} />}
+      {karsAcik && ksecim.length >= 2 && (
+        <MusteriKarsilastirmaDialog names={ksecim} rows={data as Row[]} onClose={() => setKarsAcik(false)} />
+      )}
     </div>
   );
 }
@@ -117,7 +148,13 @@ const AVATAR: Record<'A' | 'B' | 'C', string> = {
   C: 'bg-gradient-to-br from-slate-400 to-slate-500 dark:from-slate-600 dark:to-slate-700',
 };
 
-function MusteriKart({ k, onOpen }: { k: ReturnType<typeof musteriKartlari>[number]; onOpen: () => void }) {
+function MusteriKart({ k, onOpen, karsMode, secili, onToggle }: {
+  k: ReturnType<typeof musteriKartlari>[number];
+  onOpen: () => void;
+  karsMode: boolean;
+  secili: boolean;
+  onToggle: () => void;
+}) {
   const initials = k.name.trim().split(/\s+/).slice(0, 2).map((s) => s[0]?.toLocaleUpperCase('tr-TR') || '').join('');
   const ekipTop = k.kompleTIR + k.parsiyelTIR + k.konteyner || 1;
   const yl = k.yillar.slice(-6);
@@ -125,19 +162,31 @@ function MusteriKart({ k, onOpen }: { k: ReturnType<typeof musteriKartlari>[numb
 
   return (
     <button
-      onClick={onOpen}
-      className={'group text-left rounded-2xl border bg-card p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer ' + RING[k.cls]}
-      aria-label={k.name + ' detayını aç'}
+      onClick={karsMode ? onToggle : onOpen}
+      className={'group relative text-left rounded-2xl border bg-card p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer ' +
+        (karsMode && secili ? 'ring-2 ring-violet-600 border-violet-400' : RING[k.cls])}
+      aria-label={k.name + (karsMode ? ' karşılaştırmaya ekle/çıkar' : ' detayını aç')}
     >
+      {/* karşılaştırma seçim göstergesi */}
+      {karsMode && (
+        <span className={'absolute top-2.5 left-2.5 w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold ring-1 ' +
+          (secili ? 'bg-violet-600 ring-violet-600 text-white' : 'bg-background ring-border text-transparent')}>
+          ✓
+        </span>
+      )}
       {/* üst satır */}
       <div className="flex items-start gap-2.5">
         <div className={'w-10 h-10 rounded-xl text-white text-[13px] font-extrabold flex items-center justify-center shrink-0 ' + AVATAR[k.cls]}>
           {initials || '?'}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5 min-w-0">
+          <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
             <span className="font-bold text-[13.5px] truncate group-hover:text-primary transition-colors">{k.name}</span>
             <ClsBadge cls={k.cls} />
+            <StatusBadge
+              label={LIFE_LABEL[k.ritim][0]}
+              tone={k.ritim === 'ok' ? 'ok' : k.ritim === 'watch' ? 'watch' : k.ritim === 'risk' ? 'risk' : 'neutral'}
+            />
           </div>
           <div className="text-[10.5px] text-muted-foreground mt-0.5">
             {nf0.format(k.sefer)} sefer · {nf0.format(k.adet)} araç · pay %{nf1.format(k.pay)}
@@ -157,6 +206,8 @@ function MusteriKart({ k, onOpen }: { k: ReturnType<typeof musteriKartlari>[numb
             %{nf1.format(Math.abs(k.degisim))}
             <span className="font-medium opacity-70">vs {k.degPrevYil}</span>
           </span>
+        ) : karsMode ? (
+          <span className="w-5" />
         ) : null}
       </div>
 
@@ -194,6 +245,12 @@ function MusteriKart({ k, onOpen }: { k: ReturnType<typeof musteriKartlari>[numb
           <span className="inline-flex items-center gap-1"><i className="w-2 h-2 rounded-full bg-amber-500 inline-block" />Parsiyel %{((k.parsiyelTIR / ekipTop) * 100).toFixed(0)}</span>
           <span className="inline-flex items-center gap-1"><i className="w-2 h-2 rounded-full bg-pink-500 inline-block" />Konteyner %{((k.konteyner / ekipTop) * 100).toFixed(0)}</span>
         </div>
+      </div>
+
+      {/* son yükleme + en yoğun ay */}
+      <div className="mt-2 pt-1.5 border-t border-border/60 flex items-center justify-between gap-2 text-[9.5px] text-muted-foreground">
+        <span>🕐 Son: <b className="text-foreground/80">{fmtDate(k.sonYukleme) || '—'}</b></span>
+        <span>📅 En yoğun: <b className="text-foreground/80">{k.enYogunAy}</b></span>
       </div>
     </button>
   );

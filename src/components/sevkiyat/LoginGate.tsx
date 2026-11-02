@@ -1,18 +1,18 @@
 'use client';
 
-/* E-posta/şifre giriş kapısı + demo önizleme modu */
+/* E-posta/şifre giriş kapısı + misafir (salt okunur) + demo önizleme modu */
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Ship, BarChart3, Database, ShieldCheck, PlayCircle } from 'lucide-react';
+import { Loader2, Ship, BarChart3, Database, ShieldCheck, PlayCircle, Eye } from 'lucide-react';
 import { useSevkiyat } from '@/lib/sevkiyat/store';
 import { authErrorTr } from '@/lib/sevkiyat/firebase';
 
 export default function LoginGate({ children }: { children: React.ReactNode }) {
-  const { authReady, user, demoMode, signIn, signUp, enterDemo, initAuth } = useSevkiyat();
+  const { authReady, user, demoMode, signIn, signUp, signInGuest, enterDemo, initAuth } = useSevkiyat();
   const [email, setEmail] = useState('');
   const [pass, setPass] = useState('');
   const [busy, setBusy] = useState(false);
@@ -46,6 +46,19 @@ export default function LoginGate({ children }: { children: React.ReactNode }) {
     initAuth();
   };
 
+  const onGuest = async () => {
+    setErr('');
+    setBusy(true);
+    try {
+      await signInGuest();
+    } catch (e) {
+      const code = (e as { code?: string })?.code || '';
+      setErr(authErrorTr(code));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col lg:flex-row bg-background">
       {/* Sol — marka paneli */}
@@ -74,6 +87,7 @@ export default function LoginGate({ children }: { children: React.ReactNode }) {
               { icon: BarChart3, t: 'Üst düzey grafikler', d: 'ECharts ile trend, ısı haritası, Pareto ve tahmin' },
               { icon: Database, t: 'Firebase bulut senkronu', d: 'Delta yazım, önbellekli açılış, kota dostu' },
               { icon: ShieldCheck, t: 'Hesap bazlı erişim', d: 'E-posta/şifre ile güvenli oturum' },
+              { icon: Eye, t: 'Misafir izleme modu', d: 'Hesapsız giriş, salt okunur veri izleme' },
             ].map((f) => (
               <li key={f.t} className="flex gap-3">
                 <span className="mt-0.5 w-8 h-8 rounded-lg bg-white/10 ring-1 ring-white/15 flex items-center justify-center shrink-0">
@@ -137,12 +151,20 @@ export default function LoginGate({ children }: { children: React.ReactNode }) {
                 </div>
               </div>
 
-              <Button variant="outline" className="w-full h-11" onClick={onDemo}>
+              <Button variant="outline" className="w-full h-11" onClick={() => void onGuest()} disabled={busy}>
+                {busy ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Eye className="w-4 h-4 mr-2" />}
+                Misafir olarak göz at
+              </Button>
+              <p className="text-[11px] text-muted-foreground text-center leading-relaxed">
+                Gerçek verileri <b>salt okunur</b> izlersiniz; yükleme, silme ve düzenleme kapalıdır.
+              </p>
+
+              <Button variant="ghost" className="w-full h-10 text-muted-foreground" onClick={onDemo}>
                 <PlayCircle className="w-4 h-4 mr-2" />
                 Demo veriyle önizle
               </Button>
-              <p className="text-[11px] text-muted-foreground text-center leading-relaxed">
-                Demo modunda gerçek Firebase'e yazılmaz; zengin örnek veriyle tüm analizleri denersiniz.
+              <p className="text-[10.5px] text-muted-foreground/70 text-center leading-relaxed">
+                Demo modunda gerçek Firebase'e yazılmaz; örnek veriyle tüm analizleri denersiniz.
               </p>
             </>
           )}

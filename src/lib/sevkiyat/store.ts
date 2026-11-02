@@ -3,7 +3,7 @@ import { create } from 'zustand';
 import type { Row, Targets, FilterState, Preset, ViewId, SyncState } from './types';
 import { idbGet, idbSet, cacheSave } from './cache';
 import {
-  watchAuth, fbSignIn, fbSignUp, fbSignOut, fbLoadRows, fbUpsert, fbDeleteIds, fbDeleteAll,
+  watchAuth, fbSignIn, fbSignUp, fbGuestSignIn, fbSignOut, fbLoadRows, fbUpsert, fbDeleteIds, fbDeleteAll,
   fbSaveTargets, fbLoadTargets, fbGetSyncVer, fbBumpVer, withRetry,
 } from './firebase';
 import { canonicalizeAll, reassignIds } from './id';
@@ -22,6 +22,7 @@ export const DEFAULT_FILTERS: FilterState = {
 interface SevkiyatState {
   authReady: boolean;
   user: string | null;
+  misafir: boolean;
   demoMode: boolean;
   data: Row[];
   targets: Targets;
@@ -39,6 +40,7 @@ interface SevkiyatState {
   exitDemo: () => void;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
+  signInGuest: () => Promise<void>;
   signOutUser: () => Promise<void>;
 
   bootData: () => Promise<void>;
@@ -77,6 +79,7 @@ function loadCaps(): Record<string, number> {
 export const useSevkiyat = create<SevkiyatState>((set, get) => ({
   authReady: false,
   user: null,
+  misafir: false,
   demoMode: false,
   data: [],
   targets: {},
@@ -95,7 +98,11 @@ export const useSevkiyat = create<SevkiyatState>((set, get) => ({
     get()._loadLocal();
     try {
       const un = watchAuth((u) => {
-        set({ authReady: true, user: u ? u.email || 'kullanıcı' : null });
+        set({
+          authReady: true,
+          user: u ? (u.isAnonymous ? 'Misafir' : u.email || 'kullanıcı') : null,
+          misafir: !!u?.isAnonymous,
+        });
         if (u && !get().bootDone) {
           void get().bootData();
         }
@@ -128,19 +135,25 @@ export const useSevkiyat = create<SevkiyatState>((set, get) => ({
 
   signIn: async (email, password) => {
     const u = await fbSignIn(email, password);
-    set({ user: u.email || 'kullanıcı' });
+    set({ user: u.email || 'kullanıcı', misafir: !!u.isAnonymous });
   },
 
   signUp: async (email, password) => {
     const u = await fbSignUp(email, password);
-    set({ user: u.email || 'kullanıcı' });
+    set({ user: u.email || 'kullanıcı', misafir: !!u.isAnonymous });
+  },
+
+  /** Misafir girişi — anonim oturum, salt okunur */
+  signInGuest: async () => {
+    const u = await fbGuestSignIn();
+    set({ user: u.isAnonymous ? 'Misafir' : u.email || 'kullanıcı', misafir: !!u.isAnonymous });
   },
 
   signOutUser: async () => {
     try {
       await fbSignOut();
     } finally {
-      set({ user: null, demoMode: false, data: [], targets: {}, syncState: 'boot', bootDone: false, view: 'overview' });
+      set({ user: null, misafir: false, demoMode: false, data: [], targets: {}, syncState: 'boot', bootDone: false, view: 'overview' });
     }
   },
 
@@ -195,6 +208,10 @@ export const useSevkiyat = create<SevkiyatState>((set, get) => ({
 
   /** Excel satırlarını birleştir/değiştir + Firebase'e delta yaz */
   applyRows: async (incoming, sheetLabel, fileName, merge) => {
+    if (get().misafir) {
+      console.warn('[Sevkiyat] Misafir modunda veri yazma engellendi');
+      return false;
+    }
     console.log('[Sevkiyat] ' + fileName + ' · ' + sheetLabel + ' · ' + incoming.length + ' satır · mod: ' + (merge ? 'birleştir' : 'değiştir'));
     const cur = get().data.map((r) => ({ ...r }));
     canonicalizeAll(cur, incoming);
@@ -267,6 +284,7 @@ export const useSevkiyat = create<SevkiyatState>((set, get) => ({
   },
 
   clearAll: async () => {
+    if (get().misafir) return;
     set({ data: [], syncState: 'saving' });
     void cacheSave([], get().targets);
     if (get().demoMode) {
@@ -286,6 +304,7 @@ export const useSevkiyat = create<SevkiyatState>((set, get) => ({
   },
 
   saveTargets: async (t) => {
+    if (get().misafir) return false;
     set({ targets: t });
     void cacheSave(get().data, t);
     if (get().demoMode) return true;
@@ -299,6 +318,7 @@ export const useSevkiyat = create<SevkiyatState>((set, get) => ({
   },
 
   importTargetsLocal: (t) => {
+    if (get().misafir) return;
     set({ targets: t });
     void cacheSave(get().data, t);
   },

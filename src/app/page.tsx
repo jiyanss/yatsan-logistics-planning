@@ -23,10 +23,10 @@ import { VIEW_TITLES } from '@/components/sevkiyat/nav';
 import { useSevkiyat, applyFilters } from '@/lib/sevkiyat/store';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/sevkiyat/Shared';
-import { UploadCloud } from 'lucide-react';
+import { UploadCloud, Eye } from 'lucide-react';
 
 export default function Page() {
-  const { view, initAuth, bootDone, data, demoMode, user, filters } = useSevkiyat();
+  const { view, initAuth, bootDone, data, demoMode, user, filters, misafir } = useSevkiyat();
 
   useEffect(() => {
     initAuth();
@@ -78,12 +78,24 @@ export default function Page() {
               {view === 'rapor' && <RaporView />}
               {view === 'yrapor' && <YonetimRaporlari />}
               {view === 'mkart' && <MusteriKartlari />}
-              {view === 'veri' && <UploadPanel />}
+              {view === 'veri' && (misafir ? <MisafirVeriNotu /> : <UploadPanel />)}
             </motion.div>
           </AnimatePresence>
         )}
       </Shell>
     </LoginGate>
+  );
+}
+
+function MisafirVeriNotu() {
+  return (
+    <div className="rounded-xl border bg-card shadow-sm">
+      <EmptyState
+        icon={<Eye className="w-6 h-6" />}
+        title="Misafir modunda veri yükleme kapalıdır"
+        desc="Yalnızca izleme yetkiniz var. Veri yüklemek, silmek veya düzenlemek için Yetkili hesabıyla giriş yapın."
+      />
+    </div>
   );
 }
 

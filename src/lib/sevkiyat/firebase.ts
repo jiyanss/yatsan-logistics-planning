@@ -6,7 +6,7 @@
 import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
 import {
   getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword,
-  signOut, onAuthStateChanged, updateProfile,
+  signInAnonymously, signOut, onAuthStateChanged, updateProfile,
   type Auth, type User,
 } from 'firebase/auth';
 import {
@@ -65,6 +65,13 @@ export async function fbSignUp(email: string, password: string, name?: string): 
   return cred.user;
 }
 
+/** Misafir girişi — anonim oturum; RTDB kurallarında yazma hakkı yoktur (salt okunur) */
+export async function fbGuestSignIn(): Promise<User> {
+  const { auth } = fb();
+  const cred = await signInAnonymously(auth);
+  return cred.user;
+}
+
 export async function fbSignOut(): Promise<void> {
   const { auth } = fb();
   await signOut(auth);
@@ -81,7 +88,8 @@ export function authErrorTr(code: string): string {
     'auth/email-already-in-use': 'Bu e-posta zaten kayıtlı. Giriş yapmayı deneyin.',
     'auth/weak-password': 'Şifre çok zayıf (en az 6 karakter).',
     'auth/too-many-requests': 'Çok fazla deneme. Bir süre sonra tekrar deneyin.',
-    'auth/operation-not-allowed': 'Firebase konsolunda E-posta/Şifre yöntemi etkinleştirilmemiş.',
+    'auth/operation-not-allowed': 'Bu oturum yöntemi Firebase konsolunda etkin değil (E-posta/Şifre veya Anonim).',
+    'auth/admin-restricted-operation': 'Firebase konsolunda "Anonim" oturum yöntemi etkinleştirilmemiş. Konsol → Authentication → Sign-in method → Anonim\u2019i etkinleştirin.',
     'auth/network-request-failed': 'Ağ hatası: Firebase\u2019e ulaşılamıyor.',
     'auth/configuration-not-found': 'Firebase projesinde kimlik doğrulama yapılandırılmamış.',
   };

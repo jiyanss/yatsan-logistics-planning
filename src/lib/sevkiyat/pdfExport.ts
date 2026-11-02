@@ -11,7 +11,7 @@ export async function elemanPdf(el: HTMLElement | null, dosyaAdi: string): Promi
     backgroundColor: '#ffffff',
     useCORS: true,
     logging: false,
-    ignoreElements: (e: HTMLElement) => !!e.classList && e.classList.contains('no-pdf'),
+    ignoreElements: (e: Element) => !!(e as HTMLElement).classList && (e as HTMLElement).classList.contains('no-pdf'),
   });
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pw = pdf.internal.pageSize.getWidth();

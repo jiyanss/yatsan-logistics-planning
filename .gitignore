@@ -66,3 +66,5 @@ tool-results
 download
 upload
 agent-ctx
+public/yatsan-panel.zip
+!.env.example

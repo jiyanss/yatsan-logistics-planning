@@ -9,6 +9,8 @@ export const firebaseConfig = {
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 'sevkiyat-yukleme-dashboard.firebasestorage.app',
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MSG_SENDER_ID || '633766455354',
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || '1:633766455354:web:4be47c83414c05a5aeed03',
+  /* Realtime Database (europe-west1) — kota dostu bant genişliği modeli */
+  databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL || 'https://sevkiyat-yukleme-dashboard-default-rtdb.europe-west1.firebasedatabase.app',
 };
 
 export const isDefaultProject = !process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;

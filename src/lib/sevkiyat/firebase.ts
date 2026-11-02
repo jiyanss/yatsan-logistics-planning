@@ -1,7 +1,8 @@
-/* Firebase (Auth + Firestore) katmanı — eski panelin koleksiyon şemasıyla birebir uyumlu:
-   - koleksiyon 'sevkiyat'  : sevkiyat kayıtları (deterministik doküman ID)
-   - meta/targets           : {data: JSON} aylık hedefler
-   - meta/sync              : {ver: increment} senkron sürümü (önbellek kıyası) */
+/* Firebase (Auth + Realtime Database) katmanı — eski panelin şema mantığıyla birebir uyumlu:
+   - RTDB 'sevkiyat' düğümü  : sevkiyat kayıtları (deterministik anahtar, kota dostu bant genişliği modeli)
+   - meta/targets            : {data: JSON} aylık hedefler
+   - meta/sync               : {ver} senkron sürümü (önbellek kıyası)
+   Firestore erişimi YALNIZCA tek tıkla veri taşıma (fbMigrateFirestoreToRtdb) için korunur. */
 import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
 import {
   getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword,
@@ -9,9 +10,13 @@ import {
   type Auth, type User,
 } from 'firebase/auth';
 import {
-  getFirestore, collection, doc, getDocs, getDoc, writeBatch, setDoc, deleteDoc, increment,
+  getFirestore, collection, doc, getDocs, getDoc,
   type Firestore,
 } from 'firebase/firestore';
+import {
+  getDatabase, ref, get, set, update, runTransaction,
+  type Database,
+} from 'firebase/database';
 import { firebaseConfig } from './firebaseConfig';
 import type { Row, DbDoc, Targets } from './types';
 import { isoDay } from './core';
@@ -21,6 +26,7 @@ import { safeDocId } from './id';
 let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
 let db: Firestore | null = null;
+let rdb: Database | null = null;
 
 /** Yalnızca tarayıcıda tembel başlatma (SSR / statik export dostu) */
 export function fb(): { auth: Auth; db: Firestore } {
@@ -29,8 +35,14 @@ export function fb(): { auth: Auth; db: Firestore } {
     app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
     auth = getAuth(app);
     db = getFirestore(app);
+    rdb = getDatabase(app);
   }
   return { auth: auth!, db: db! };
+}
+
+function getRtdb(): Database {
+  fb();
+  return rdb!;
 }
 
 /* ---------- Auth ---------- */
@@ -76,7 +88,12 @@ export function authErrorTr(code: string): string {
   return map[code] || 'Giriş başarısız: ' + code;
 }
 
-/* ---------- Firestore: sevkiyat koleksiyonu ---------- */
+/* ---------- Realtime Database: sevkiyat düğümü ---------- */
+
+/** RTDB anahtar kuralları: . $ # [ ] / yasak — URL-encode ile çakışmasız & geri dönüşümlü yap */
+export function rtdbKey(id: string): string {
+  return encodeURIComponent(safeDocId(id)).replace(/\./g, '%2E');
+}
 
 export function toDbDoc(r: Row): DbDoc {
   return {
@@ -112,62 +129,52 @@ export function fromDbDoc(x: Record<string, unknown>, id: string): Row {
 }
 
 export async function fbLoadRows(): Promise<Row[]> {
-  const { db } = fb();
-  const snap = await getDocs(collection(db, 'sevkiyat'));
-  return snap.docs.map((d) => fromDbDoc(d.data(), d.id));
+  const snap = await get(ref(getRtdb(), 'sevkiyat'));
+  if (!snap.exists()) return [];
+  const val = snap.val() as Record<string, Record<string, unknown>>;
+  return Object.keys(val).map((k) => {
+    const v = val[k] || {};
+    return fromDbDoc(v, String(v.id || decodeURIComponent(k)));
+  });
 }
 
 export async function fbUpsert(rows: Row[]): Promise<void> {
-  const { db } = fb();
-  let i = 0;
-  async function next(): Promise<void> {
-    if (i >= rows.length) return;
-    const batch = writeBatch(db);
-    rows.slice(i, i + 450).forEach((r) => {
-      batch.set(doc(db, 'sevkiyat', safeDocId(r.id)), toDbDoc(r));
+  const rdb = getRtdb();
+  for (let i = 0; i < rows.length; i += 1500) {
+    const payload: Record<string, DbDoc & { id: string }> = {};
+    rows.slice(i, i + 1500).forEach((r) => {
+      payload[rtdbKey(r.id)] = { ...toDbDoc(r), id: r.id };
     });
-    i += 450;
-    await batch.commit();
-    await next();
+    await update(ref(rdb, 'sevkiyat'), payload);
   }
-  await next();
 }
 
 export async function fbDeleteIds(ids: string[]): Promise<void> {
-  const { db } = fb();
-  let i = 0;
-  async function next(): Promise<void> {
-    if (i >= ids.length) return;
-    const batch = writeBatch(db);
-    ids.slice(i, i + 450).forEach((id) => {
-      batch.delete(doc(db, 'sevkiyat', safeDocId(id)));
+  const rdb = getRtdb();
+  for (let i = 0; i < ids.length; i += 1500) {
+    const payload: Record<string, null> = {};
+    ids.slice(i, i + 1500).forEach((id) => {
+      payload[rtdbKey(id)] = null;
     });
-    i += 450;
-    await batch.commit();
-    await next();
+    await update(ref(rdb, 'sevkiyat'), payload);
   }
-  await next();
 }
 
 export async function fbDeleteAll(): Promise<void> {
-  const { db } = fb();
-  const snap = await getDocs(collection(db, 'sevkiyat'));
-  await fbDeleteIds(snap.docs.map((d) => d.id));
+  await set(ref(getRtdb(), 'sevkiyat'), null);
 }
 
 /* ---------- Hedefler ---------- */
 
 export async function fbSaveTargets(targets: Targets): Promise<void> {
-  const { db } = fb();
-  await setDoc(doc(db, 'meta', 'targets'), { data: JSON.stringify(targets) });
+  await set(ref(getRtdb(), 'meta/targets'), { data: JSON.stringify(targets) });
 }
 
 export async function fbLoadTargets(): Promise<Targets> {
-  const { db } = fb();
-  const d = await getDoc(doc(db, 'meta', 'targets'));
-  if (d.exists()) {
+  const snap = await get(ref(getRtdb(), 'meta/targets'));
+  if (snap.exists()) {
     try {
-      return (JSON.parse(d.data().data) as Targets) || {};
+      return (JSON.parse(snap.val().data) as Targets) || {};
     } catch {
       /* bozuk veri — boş dön */
     }
@@ -178,14 +185,47 @@ export async function fbLoadTargets(): Promise<Targets> {
 /* ---------- Senkron sürümü ---------- */
 
 export async function fbGetSyncVer(): Promise<number> {
-  const { db } = fb();
-  const d = await getDoc(doc(db, 'meta', 'sync'));
-  return d.exists() ? +(d.data().ver as number) || 0 : 0;
+  const snap = await get(ref(getRtdb(), 'meta/sync/ver'));
+  return snap.exists() ? +snap.val() || 0 : 0;
 }
 
 export async function fbBumpVer(): Promise<void> {
+  await runTransaction(ref(getRtdb(), 'meta/sync'), (cur) => ({
+    ver: ((cur as { ver?: number } | null)?.ver || 0) + 1,
+  }));
+}
+
+/* ---------- Tek tıkla taşıma: Firestore → Realtime Database ---------- */
+
+export interface MigrationResult {
+  rows: number;
+  targets: boolean;
+  ver: number;
+}
+
+/** Kaynak Firestore'a DOKUNMAZ; tüm kayıtlar + hedefler RTDB'ye kopyalanır ve sürüm yükseltilir. */
+export async function fbMigrateFirestoreToRtdb(): Promise<MigrationResult> {
   const { db } = fb();
-  await setDoc(doc(db, 'meta', 'sync'), { ver: increment(1) }, { merge: true });
+
+  const fsSnap = await getDocs(collection(db, 'sevkiyat'));
+  const rows = fsSnap.docs.map((d) => fromDbDoc(d.data(), d.id));
+  await fbUpsert(rows);
+
+  let targets = false;
+  const tSnap = await getDoc(doc(db, 'meta', 'targets'));
+  if (tSnap.exists()) {
+    await set(ref(getRtdb(), 'meta/targets'), tSnap.data());
+    targets = true;
+  }
+
+  const sSnap = await getDoc(doc(db, 'meta', 'sync'));
+  const oldVer = sSnap.exists() ? +(sSnap.data().ver as number) || 0 : 0;
+  const ver = oldVer + 1;
+  await set(ref(getRtdb(), 'meta/sync'), { ver });
+
+  const check = await get(ref(getRtdb(), 'sevkiyat'));
+  const count = check.exists() ? Object.keys(check.val()).length : 0;
+  return { rows: count, targets, ver };
 }
 
 /* ---------- Retry ---------- */

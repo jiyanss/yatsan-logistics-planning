@@ -70,6 +70,36 @@ Kurallar depoda `firestore.rules` olarak da durur; CLI ile uygulamak için:
 firebase deploy --only firestore:rules
 ```
 
+### Veri Deposu: Realtime Database (kota dostu)
+
+Panel varsayılan olarak **Firebase Realtime Database** üzerinden çalışır
+(bant genişliği modeli — Firestore'un günlük okuma/yazma kotaları yerine
+aylık 10 GB ücretsiz indirim). Veri yapısı:
+
+- `sevkiyat/` — kayıtlar (deterministik anahtar)
+- `meta/targets` — aylık hedefler
+- `meta/sync` — önbellek sürüm sayacı
+
+**Kurallar** (Firebase Console → Realtime Database → Rules sekmesi):
+
+```json
+{
+  "rules": {
+    "sevkiyat": { ".read": "auth != null", ".write": "auth != null" },
+    "meta": { ".read": "auth != null", ".write": "auth != null" }
+  }
+}
+```
+
+Depoda `database.rules.json` olarak da durur; CLI ile: `firebase deploy --only database`
+
+**Firestore'dan geçiş:** Excel Yükleme ekranının altındaki
+**"Veri Taşıma: Firestore → Realtime Database"** kartı, tüm kayıtları ve
+hedefleri tek tıkla RTDB'ye **kopyalar** (kaynak silinmez, geri dönüş mümkündür).
+
+Farklı bir proje/bölge kullanıyorsanız `.env.local` içine
+`NEXT_PUBLIC_FIREBASE_DATABASE_URL` yazın.
+
 ### Önemli: Vercel Alan Adını Yetkilendirin
 
 Vercel'e dağıttıktan sonra panelin kendi alan adından giriş yapabilmesi için:

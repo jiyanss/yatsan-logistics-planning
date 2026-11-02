@@ -11,9 +11,10 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   UploadCloud, FileUp, Settings2, Sparkles, FileDown, Stethoscope, Trash2, RefreshCw,
-  CheckCircle2, AlertTriangle, Loader2,
+  CheckCircle2, AlertTriangle, Loader2, ArrowRightLeft, DatabaseZap,
 } from 'lucide-react';
 import { useSevkiyat, applyFilters } from '@/lib/sevkiyat/store';
+import { fbMigrateFirestoreToRtdb } from '@/lib/sevkiyat/firebase';
 import { detectHeader, rowsFromSheet, sheetAoa, autoParse, importTargetsFromWb, downloadTemplate, fileStat, FIELD_DEFS, type HeaderDetect } from '@/lib/sevkiyat/excel';
 import { colLetter, nf0, fmtDate, pad2 } from '@/lib/sevkiyat/core';
 import { parseDate, serialToParts } from '@/lib/sevkiyat/dates';
@@ -185,6 +186,8 @@ export default function UploadPanel() {
       }} />}
 
       {wb && <DiagDialog open={diagOpen} onClose={() => setDiagOpen(false)} wb={wb} />}
+
+      {!demoMode && <MigrationCard />}
     </div>
   );
 }
@@ -195,6 +198,66 @@ function StatBox({ label, value, warn }: { label: string; value: string; warn?: 
       <div className={cn('font-bold text-[13px] truncate', warn && 'text-red-600 dark:text-red-400')}>{value || '—'}</div>
       <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
     </div>
+  );
+}
+
+/* ---------- Firestore → Realtime Database taşıma kartı ---------- */
+
+function MigrationCard() {
+  const [state, setState] = useState<'idle' | 'run' | 'ok' | 'err'>('idle');
+  const [msg, setMsg] = useState('');
+
+  const run = async () => {
+    if (!confirm('Firestore\u2019daki TÜM kayıtlar ve aylık hedefler Realtime Database\u2019e KOPYALANACAK.\n\n• Kaynak Firestore verisi silinmez (geri dönüş mümkün)\n• İşlem sonrası panel RTDB üzerinden çalışır\n\nBaşlatılsın mı?')) return;
+    setState('run');
+    setMsg('');
+    try {
+      const r = await fbMigrateFirestoreToRtdb();
+      setMsg(
+        '✅ ' + nf0.format(r.rows) + ' kayıt Realtime Database\u2019e yazıldı' +
+        ' · aylık hedefler: ' + (r.targets ? 'taşındı' : 'kayıt yok') +
+        ' · yeni sürüm: v' + r.ver +
+        '\nSayfayı yenileyin (F5) — panel artık RTDB üzerinden çalışacak.'
+      );
+      setState('ok');
+    } catch (e) {
+      const raw = e instanceof Error ? e.message : String(e);
+      setMsg('❌ ' + raw + (/permission/i.test(raw) ? '\n→ Realtime Database kuralları henüz ayarlanmamış olabilir. README\u2019deki database.rules.json içeriğini konsola yapıştırın.' : ''));
+      setState('err');
+    }
+  };
+
+  return (
+    <Card className="shadow-sm border-dashed">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-[14px] flex items-center gap-2">
+          <span className="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+            <DatabaseZap className="w-4 h-4" />
+          </span>
+          Veri Taşıma: Firestore → Realtime Database
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        <p className="text-[11.5px] text-muted-foreground leading-relaxed">
+          Kota dostu geçiş: tüm kayıtlar ve hedefler Realtime Database\u2019e kopyalanır; işlem başına ücretlendirme yerine bant genişliği modeline geçilir.
+          Kaynak Firestore verisi <b className="text-foreground">silinmez</b>.
+        </p>
+        <Button size="sm" variant="outline" onClick={() => void run()} disabled={state === 'run'}>
+          {state === 'run'
+            ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+            : <ArrowRightLeft className="w-3.5 h-3.5 mr-1.5" />}
+          {state === 'run' ? 'Taşınıyor… (8.8K kayıt ~1-2 dk)' : 'Taşımayı Başlat'}
+        </Button>
+        {msg && (
+          <div className={cn(
+            'rounded-lg px-3 py-2 text-[12px] leading-relaxed whitespace-pre-line',
+            state === 'ok' ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : 'bg-red-500/10 text-red-600 dark:text-red-400'
+          )}>
+            {msg}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

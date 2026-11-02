@@ -1,0 +1,12 @@
+{
+  "rules": {
+    "sevkiyat": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "meta": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    }
+  }
+}

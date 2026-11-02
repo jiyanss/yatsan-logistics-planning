@@ -69,6 +69,8 @@ export type ViewId =
   | 'kapasite'
   | 'hedef'
   | 'rapor'
+  | 'yrapor'
+  | 'mkart'
   | 'veri';
 
 export type SyncState = 'boot' | 'synced' | 'saving' | 'offline' | 'demo';

@@ -1,7 +1,7 @@
 /* Navigasyon yapılandırması */
 import {
   LayoutDashboard, BarChart3, CalendarRange, GitCompareArrows, Users, HeartPulse,
-  Package, Boxes, Target, FileText, UploadCloud, type LucideIcon,
+  Package, Boxes, Target, FileText, UploadCloud, Presentation, Contact, type LucideIcon,
 } from 'lucide-react';
 import type { ViewId } from '@/lib/sevkiyat/types';
 
@@ -35,7 +35,9 @@ export const NAV: NavGroup[] = [
       { id: 'parsiyel', label: 'Parsiyel', icon: Package, desc: 'Konsolidasyon fırsatları' },
       { id: 'kapasite', label: 'Kapasite Doluluk', icon: Boxes, desc: 'Gerçek vs teorik m³' },
       { id: 'hedef', label: 'Hedefler', icon: Target, desc: 'Hedef vs gerçekleşen' },
-      { id: 'rapor', label: 'Raporlar', icon: FileText, desc: 'Haftalık, günlük ve tüm kayıtlar' },
+      { id: 'rapor', label: 'Detay Tablolar', icon: FileText, desc: 'Haftalık, günlük ve tüm kayıtlar' },
+      { id: 'yrapor', label: 'Yönetim Raporları', icon: Presentation, desc: 'Grafik ağırlıklı raporlar + PDF çıktı' },
+      { id: 'mkart', label: 'Müşteri Kartları', icon: Contact, desc: 'Kart görünümü, filtre ve yıllık değişim' },
     ],
   },
   {
@@ -57,5 +59,7 @@ export const VIEW_TITLES: Record<ViewId, { title: string; sub: string }> = {
   kapasite: { title: 'Kapasite Doluluk', sub: 'Tip bazında gerçek vs teorik m³' },
   hedef: { title: 'Hedef vs Gerçekleşen', sub: 'Aylık araç ve m³ hedefleri' },
   rapor: { title: 'Detay Raporları', sub: 'Haftalık, günlük ve tüm kayıtlar' },
+  yrapor: { title: 'Yönetim Raporları', sub: 'Grafik ağırlıklı yönetici raporları · PDF çıktılı' },
+  mkart: { title: 'Müşteri Kartları', sub: 'Müşteri bazlı kartlar, filtre ve yıllık değişim' },
   veri: { title: 'Excel Yükleme & Veri Durumu', sub: 'Firebase senkron yönetimi' },
 };

@@ -17,6 +17,8 @@ import ParsiyelView from '@/components/sevkiyat/views/ParsiyelView';
 import KapasiteView from '@/components/sevkiyat/views/KapasiteView';
 import HedefView from '@/components/sevkiyat/views/HedefView';
 import RaporView from '@/components/sevkiyat/views/RaporView';
+import YonetimRaporlari from '@/components/sevkiyat/views/YonetimRaporlari';
+import MusteriKartlari from '@/components/sevkiyat/views/MusteriKartlari';
 import { VIEW_TITLES } from '@/components/sevkiyat/nav';
 import { useSevkiyat, applyFilters } from '@/lib/sevkiyat/store';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -44,14 +46,14 @@ export default function Page() {
             <h1 className="text-lg md:text-xl font-extrabold tracking-tight">{meta.title}</h1>
             <p className="text-xs text-muted-foreground mt-0.5">{meta.sub}</p>
           </div>
-          {view !== 'overview' && view !== 'veri' && (
+          {view !== 'overview' && view !== 'veri' && view !== 'mkart' && (
             <div className="text-[11.5px] text-muted-foreground">
               {rows.length.toLocaleString('tr-TR')} kayıt filtrede
             </div>
           )}
         </div>
 
-        {view !== 'veri' && <FilterBar />}
+        {view !== 'veri' && view !== 'mkart' && <FilterBar />}
 
         {booting ? (
           <BootSkeleton />
@@ -74,6 +76,8 @@ export default function Page() {
               {view === 'kapasite' && <KapasiteView />}
               {view === 'hedef' && <HedefView />}
               {view === 'rapor' && <RaporView />}
+              {view === 'yrapor' && <YonetimRaporlari />}
+              {view === 'mkart' && <MusteriKartlari />}
               {view === 'veri' && <UploadPanel />}
             </motion.div>
           </AnimatePresence>

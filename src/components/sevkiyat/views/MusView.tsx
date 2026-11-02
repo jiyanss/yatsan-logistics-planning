@@ -50,7 +50,7 @@ export default function MusView() {
             { key: 'm3', header: 'm³', align: 'right', cell: (c) => nf1.format(c.m3) },
             { key: 'share', header: 'Pay %', align: 'right', cell: (c) => nf1.format(c.share) },
             { key: 'cum', header: 'Küm. %', align: 'right', cell: (c) => nf1.format(c.cum) },
-            { key: 'loads', header: 'Yükleme Günü', align: 'right', cell: (c) => String(lifeMap.get(c.name)?.loads ?? c.loads) },
+            { key: 'loads', header: 'Yükleme', align: 'right', cell: (c) => String(c.loads) },
             { key: 'gap', header: 'Sessizlik', align: 'right', cell: (c) => { const o = lifeMap.get(c.name); return o?.gap != null ? o.gap + ' gün' : '—'; } },
             { key: 'last', header: 'Son', cell: (c) => (c.last ? fmtDate(c.last) : '—') },
           ]}

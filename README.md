@@ -15,7 +15,7 @@ Eski tek dosyalık `index.html` panelinin tamamen yeniden tasarlanmış, modüle
 - **Yaşam Döngüsü** — ritim analizi (Ritimde/İzle/Riskli), büyüme matrisi, yeni-kayıp akışı
 - **Parsiyel** — konsolidasyon fırsatları (aynı hafta 2+ parsiyel)
 - **Kapasite Doluluk** — düzenlenebilir tip kapasiteleri, gerçek vs teorik m³
-- **Hedefler** — aylık araç/m³ hedefleri (Firestore'da saklanır), gerçekleşen yüzdesi
+- **Hedefler** — aylık araç/m³ hedefleri (Realtime Database'de saklanır), gerçekleşen yüzdesi
 - **Raporlar** — haftalık/günlük/tüm kayıtlar + 10 sayfalık Excel dışa aktarım
 - **Excel Yükleme** — sürükle-bırak, otomatik başlık tespiti, kolon eşleştirme, teşhis aracı, HEDEF sayfası içe aktarımı, birleştir/değiştir modları
 - **Demo modu** — gerçek Firebase'e dokunmadan 24 aylık örnek veriyle gezinme
@@ -23,11 +23,20 @@ Eski tek dosyalık `index.html` panelinin tamamen yeniden tasarlanmış, modüle
 ## Veri Akışı
 
 1. Excel (`xlsx/xls/csv`) yüklenir → SheetJS ile ayrıştırılır (yalnızca değişen satırlar yazılır)
-2. Firestore `sevkiyat` koleksiyonuna delta yazılır (450'lik batch + retry)
+2. Realtime Database `sevkiyat` düğümüne delta yazılır (1500'lük `update` partileri + retry)
 3. `meta/targets` (aylık hedefler) ve `meta/sync` (sürüm sayacı) güncellenir
-4. Açılışta IndexedDB önbelleği + sürüm kıyası → gereksiz okuma yapılmaz (kota dostu)
+4. Açılışta IndexedDB önbelleği + sürüm kıyası → gereksiz indirim yapılmaz (bant genişliği dostu)
 
-Eski panelin Firestore şemasıyla **birebir uyumludur**; mevcut veriler olduğu gibi kullanılır.
+### Yükleme / Araç Sayım Kuralları
+
+- **Her Excel satırı = 1 yükleme (1 araç).** Aynı tarih + aynı müşteri + aynı tip'e ait
+  4 satır, pivot mantığıyla **4 yükleme** sayılır; tekilleştirme yapılmaz.
+- Excel'de **ADET kolonu doluysa** değer aynen kullanılır (ör. 1 satırda ADET=3 → 3 araç);
+  **boşsa/kolon yoksa** o satır 1 araç sayılır.
+- Müşteri tablolarındaki **“Yükleme”** sütunu satır sayısıdır; ritim analizi ise
+  **farklı yükleme günü** üzerinden yürür (Yaşam Döngüsü → Yükleme Ritmi tablosundaki “Gün” sütunu).
+- Eski kayıtlarda ADET=0 kalmışsa panel bunları otomatik 1 olarak okur; veriyi
+  yeniden yüklemenize gerek yoktur.
 
 ## Hızlı Başlangıç
 

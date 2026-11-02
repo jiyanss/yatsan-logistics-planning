@@ -101,7 +101,8 @@ export function toDbDoc(r: Row): DbDoc {
     bolum: r.bolum,
     kategori: r.kategori || '',
     tip: r.tip,
-    adet: r.adet || 0,
+    // ADET boşsa 1: her satır 1 araç/yükleme (pivot satır sayısı)
+    adet: r.adet || 1,
     tarih: r.tarih ? isoDay(r.tarih) : null,
     tarih_str: r.tarihStr || '',
     parsiyel_m3: r.parsiyelM3 || 0,
@@ -120,7 +121,8 @@ export function fromDbDoc(x: Record<string, unknown>, id: string): Row {
     bolum: String(x.bolum || ''),
     kategori: String(x.kategori || ''),
     tip: String(x.tip || 'Bilinmiyor'),
-    adet: +(x.adet as number) || 0,
+    // Eski kayıtlarda ADET=0 kalmışsa 1 olarak oku (her satır = 1 yükleme)
+    adet: +(x.adet as number) || 1,
     tarih: (x.tarih as string | null) || null,
     parsiyelM3: +(x.parsiyel_m3 as number) || 0,
     toplamM3: +(x.toplam_m3 as number) || 0,

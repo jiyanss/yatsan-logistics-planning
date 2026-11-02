@@ -111,7 +111,9 @@ export function custAgg(rows: Row[]): CustAgg[] {
   return list;
 }
 
-/** Müşteri yaşam döngüsü: ritim analizi (referans = en son yükleme tarihi) */
+/** Müşteri yaşam döngüsü: ritim analizi (referans = en son yükleme tarihi)
+ *  loads  = yükleme (satır) sayısı: aynı tarih+müşteri+tip'teki N satır = N yükleme
+ *  days   = farklı yükleme GÜNÜ sayısı: ritim/aralık analizi gün bazında yürür */
 export function custLifeRows(data: Row[], _caps?: Record<string, number>): { list: LifeRow[]; ref: Date | null } {
   const refD = maxDate(data);
   const ref = refD ? refD.getTime() : null;
@@ -119,13 +121,14 @@ export function custLifeRows(data: Row[], _caps?: Record<string, number>): { lis
   data.forEach((r) => {
     if (!map.has(r.musteri)) {
       map.set(r.musteri, {
-        name: r.musteri, adet: 0, m3: 0, loads: 0, first: null, last: null,
+        name: r.musteri, adet: 0, m3: 0, loads: 0, days: 0, first: null, last: null,
         deps: {}, cls: 'C', avgInt: null, gap: null, status: 'tek', eff: null,
       });
     }
     const o = map.get(r.musteri)!;
     o.adet += r.adet;
     o.m3 += r.m3;
+    o.loads++; // her satır = 1 yükleme
     o.deps[r.bolum] = (o.deps[r.bolum] || 0) + r.m3;
     if (r.tarih) {
       if (!o.last || r.tarih > o.last) o.last = r.tarih;
@@ -135,12 +138,12 @@ export function custLifeRows(data: Row[], _caps?: Record<string, number>): { lis
   const clsMap = new Map(custAgg(data).map((c) => [c.name, c.cls] as const));
   const list = Array.from(map.values());
   list.forEach((o) => {
-    o.loads = o.last && o.first ? uniqDays(data, o.name) : 0;
+    o.days = uniqDays(data, o.name);
     o.cls = clsMap.get(o.name) || 'C';
-    o.avgInt = o.loads >= 2 && o.first && o.last ? Math.max(1, Math.round((o.last.getTime() - o.first.getTime()) / 864e5 / (o.loads - 1))) : null;
+    o.avgInt = o.days >= 2 && o.first && o.last ? Math.max(1, Math.round((o.last.getTime() - o.first.getTime()) / 864e5 / (o.days - 1))) : null;
     o.gap = ref != null && o.last ? Math.max(0, Math.round((ref - o.last.getTime()) / 864e5)) : null;
     const eff = o.avgInt != null ? Math.max(o.avgInt, 5) : null;
-    if (o.loads < 2 || eff == null || o.gap == null) o.status = 'tek';
+    if (o.days < 2 || eff == null || o.gap == null) o.status = 'tek';
     else if (o.gap <= Math.round(eff * 1.3)) o.status = 'ok';
     else if (o.gap <= Math.round(eff * 1.8)) o.status = 'watch';
     else o.status = 'risk';

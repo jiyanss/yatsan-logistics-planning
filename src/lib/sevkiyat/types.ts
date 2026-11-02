@@ -125,7 +125,8 @@ export interface LifeRow {
   name: string;
   adet: number;
   m3: number;
-  loads: number; // yükleme günü sayısı
+  loads: number; // yükleme (satır) sayısı — aynı gün N satır = N yükleme
+  days: number; // farklı yükleme GÜNÜ sayısı — ritim analizi için
   first: Date | null;
   last: Date | null;
   deps: Record<string, number>;

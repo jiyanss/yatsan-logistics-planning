@@ -47,7 +47,7 @@ export default function YasamView() {
     [list]
   );
   const rhythm = useMemo(
-    () => list.filter((o) => o.loads >= 2).sort((a, b) => {
+    () => list.filter((o) => o.days >= 2).sort((a, b) => {
       const rank = { risk: 0, watch: 1, ok: 2, tek: 3 } as const;
       return rank[a.status] - rank[b.status] || b.m3 - a.m3;
     }),
@@ -193,7 +193,8 @@ export default function YasamView() {
             cols={[
               { key: 'name', header: 'Müşteri', cell: (o) => <b>{o.name}</b> },
               { key: 'cls', header: 'Sınıf', cell: (o) => <ClsBadge cls={o.cls} /> },
-              { key: 'loads', header: 'Gün', align: 'right', cell: (o) => String(o.loads) },
+              { key: 'loads', header: 'Yükleme', align: 'right', cell: (o) => String(o.loads) },
+              { key: 'days', header: 'Gün', align: 'right', cell: (o) => String(o.days) },
               { key: 'first', header: 'İlk', cell: (o) => (o.first ? fmtDate(o.first) : '—') },
               { key: 'last', header: 'Son', cell: (o) => (o.last ? fmtDate(o.last) : '—') },
               { key: 'avg', header: 'Ort. Aralık', align: 'right', cell: (o) => (o.avgInt != null ? '~' + o.avgInt + ' g' : '—') },

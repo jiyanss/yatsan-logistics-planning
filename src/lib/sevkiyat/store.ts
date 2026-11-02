@@ -374,11 +374,13 @@ function normTxt(s: string): string {
     .toLowerCase().replace(/³/g, '3').replace(/²/g, '2').replace(/[^a-z0-9]/g, '');
 }
 function hydrateCached(r: RowT): RowT {
-  // IndexedDB'den gelen Date'ler string'e dönüşmüş olabilir
-  if (r.tarih && typeof r.tarih === 'string') {
-    return { ...r, tarih: new Date(r.tarih) } as RowT;
+  // IndexedDB'den gelen Date'ler string'e dönüşmüş olabilir;
+  // eski kayıtlarda ADET=0 kalmışsa 1 olarak normalize et (her satır = 1 yükleme)
+  const out = { ...r, adet: r.adet || 1 };
+  if (out.tarih && typeof out.tarih === 'string') {
+    out.tarih = new Date(out.tarih) as RowT['tarih'];
   }
-  return r;
+  return out;
 }
 
 /* Filtre uygulama (saf fonksiyon) */

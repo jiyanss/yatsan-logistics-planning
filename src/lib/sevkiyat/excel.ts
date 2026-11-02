@@ -109,7 +109,9 @@ export function rowsFromSheet(aoa: Aoa, hi: number, cols: Record<string, string>
         bolum: cleanText(get('bolum')) || 'Diğer',
         kategori: cleanText(get('kategori')),
         tip: cleanText(get('sevkiyatTipi')) || 'Bilinmiyor',
-        adet: toNum(get('adet')),
+        // ADET kolonu boş/hiç yoksa her satır 1 araç/yükleme sayılır:
+        // aynı tarih+müşteri+tip'teki 4 satır → yükleme adedi 4 (pivot satır sayısı)
+        adet: toNum(get('adet')) || 1,
         tarih,
         parsiyelM3: par,
         toplamM3: top,

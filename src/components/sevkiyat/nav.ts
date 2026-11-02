@@ -1,7 +1,7 @@
 /* Navigasyon yapılandırması */
 import {
   LayoutDashboard, BarChart3, CalendarRange, GitCompareArrows, Users, HeartPulse,
-  Target, FileText, UploadCloud, Presentation, Contact, type LucideIcon,
+  Target, FileText, UploadCloud, Presentation, Contact, UsersRound, type LucideIcon,
 } from 'lucide-react';
 import type { ViewId } from '@/lib/sevkiyat/types';
 
@@ -41,6 +41,7 @@ export const NAV: NavGroup[] = [
   {
     title: 'Veri',
     items: [
+      { id: 'kullanicilar', label: 'Kullanıcı Yönetimi', icon: UsersRound, desc: 'Üye onayları, roller ve erişim' },
       { id: 'veri', label: 'Excel Yükleme', icon: UploadCloud, desc: 'Sürükle-bırak, eşleştir, senkronla' },
     ],
   },
@@ -57,5 +58,6 @@ export const VIEW_TITLES: Record<ViewId, { title: string; sub: string }> = {
   rapor: { title: 'Detay Raporları', sub: 'Haftalık, günlük ve tüm kayıtlar' },
   yrapor: { title: 'Yönetim Raporları', sub: 'Grafik ağırlıklı yönetici raporları · PDF çıktılı' },
   mkart: { title: 'Müşteri Kartları', sub: 'Müşteri bazlı kartlar, filtre ve yıllık değişim' },
+  kullanicilar: { title: 'Kullanıcı Yönetimi', sub: 'Üye onayları, roller ve erişim durumu' },
   veri: { title: 'Excel Yükleme & Veri Durumu', sub: 'Firebase senkron yönetimi' },
 };

@@ -8,13 +8,14 @@ import { SectionCard, DataTable, StatusBadge } from '../Shared';
 import { Button } from '@/components/ui/button';
 import TargetDialog from '../TargetDialog';
 import { useSevkiyat, applyFilters } from '@/lib/sevkiyat/store';
+import { yetkiYazar } from '@/lib/sevkiyat/types';
 import { monthlyAgg } from '@/lib/sevkiyat/analytics';
 import { uniq, ymLabel, nf0, nf1 } from '@/lib/sevkiyat/core';
 import type { Row } from '@/lib/sevkiyat/types';
 import { Target, Pencil } from 'lucide-react';
 
 export default function HedefView() {
-  const { data, filters, targets } = useSevkiyat();
+  const { data, filters, targets, yetki } = useSevkiyat();
   const { resolvedTheme } = useTheme();
   const dark = resolvedTheme === 'dark';
   const th = baseChart(dark);
@@ -47,9 +48,13 @@ export default function HedefView() {
         title="🎯 Hedef vs Gerçekleşen"
         desc="Panelden girin veya Excel'e HEDEF sayfası ekleyin (AY · ARAÇ HEDEF · M3 HEDEF, AY: 2026-01) · Hedefler Firebase'de saklanır"
         action={
-          <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
-            <Pencil className="w-3.5 h-3.5 mr-1.5" /> Hedefleri Düzenle
-          </Button>
+          yetkiYazar(yetki) ? (
+            <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+              <Pencil className="w-3.5 h-3.5 mr-1.5" /> Hedefleri Düzenle
+            </Button>
+          ) : (
+            <span className="text-[10.5px] text-muted-foreground">Yazma yetkisi yok — hedefler yalnızca izlenir</span>
+          )
         }
       >
         <DataTable

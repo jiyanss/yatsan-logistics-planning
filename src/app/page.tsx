@@ -17,20 +17,23 @@ import HedefView from '@/components/sevkiyat/views/HedefView';
 import RaporView from '@/components/sevkiyat/views/RaporView';
 import YonetimRaporlari from '@/components/sevkiyat/views/YonetimRaporlari';
 import MusteriKartlari from '@/components/sevkiyat/views/MusteriKartlari';
+import KullanicilarView from '@/components/sevkiyat/views/KullanicilarView';
 import { VIEW_TITLES } from '@/components/sevkiyat/nav';
 import { useSevkiyat, applyFilters } from '@/lib/sevkiyat/store';
+import { yetkiYazar } from '@/lib/sevkiyat/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/sevkiyat/Shared';
-import { UploadCloud, Eye } from 'lucide-react';
+import { UploadCloud, Eye, Clock, ShieldX } from 'lucide-react';
 
 export default function Page() {
-  const { view, initAuth, bootDone, data, demoMode, user, filters, misafir } = useSevkiyat();
+  const { view, initAuth, bootDone, data, demoMode, user, filters, misafir, yetki } = useSevkiyat();
 
   useEffect(() => {
     initAuth();
   }, [initAuth]);
 
   const rows = useMemo(() => applyFilters(data, filters), [data, filters]);
+  const yazabilir = !misafir && yetkiYazar(yetki);
 
   const booting = !demoMode && !!user && !bootDone;
   const meta = VIEW_TITLES[view];
@@ -38,20 +41,21 @@ export default function Page() {
   return (
     <LoginGate>
       <Shell>
+        {(yetki === 'bekliyor' || yetki === 'reddedildi') && <OnayBandi durum={yetki} />}
         {/* Görünüm başlığı */}
         <div className="flex flex-wrap items-end justify-between gap-2">
           <div>
             <h1 className="text-lg md:text-xl font-extrabold tracking-tight">{meta.title}</h1>
             <p className="text-xs text-muted-foreground mt-0.5">{meta.sub}</p>
           </div>
-          {view !== 'overview' && view !== 'veri' && view !== 'mkart' && (
+          {view !== 'overview' && view !== 'veri' && view !== 'mkart' && view !== 'kullanicilar' && (
             <div className="text-[11.5px] text-muted-foreground">
               {rows.length.toLocaleString('tr-TR')} kayıt filtrede
             </div>
           )}
         </div>
 
-        {view !== 'veri' && view !== 'mkart' && <FilterBar />}
+        {view !== 'veri' && view !== 'mkart' && view !== 'kullanicilar' && <FilterBar />}
 
         {booting ? (
           <BootSkeleton />
@@ -74,7 +78,8 @@ export default function Page() {
               {view === 'rapor' && <RaporView />}
               {view === 'yrapor' && <YonetimRaporlari />}
               {view === 'mkart' && <MusteriKartlari />}
-              {view === 'veri' && (misafir ? <MisafirVeriNotu /> : <UploadPanel />)}
+              {view === 'kullanicilar' && <KullanicilarView />}
+              {view === 'veri' && (yazabilir ? <UploadPanel /> : <MisafirVeriNotu bekliyor={yetki === 'bekliyor'} reddedildi={yetki === 'reddedildi'} />)}
             </motion.div>
           </AnimatePresence>
         )}
@@ -83,13 +88,37 @@ export default function Page() {
   );
 }
 
-function MisafirVeriNotu() {
+function OnayBandi({ durum }: { durum: 'bekliyor' | 'reddedildi' }) {
+  const bekliyor = durum === 'bekliyor';
+  return (
+    <div className={
+      'rounded-xl px-4 py-3 flex items-start gap-2.5 text-[12.5px] leading-relaxed border ' +
+      (bekliyor
+        ? 'bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300'
+        : 'bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-300')
+    }>
+      {bekliyor ? <Clock className="w-4.5 h-4.5 shrink-0 mt-0.5" /> : <ShieldX className="w-4.5 h-4.5 shrink-0 mt-0.5" />}
+      <div>
+        <b>{bekliyor ? 'Hesabınız yönetici onayı bekliyor.' : 'Hesabınız yönetici tarafından onaylanmadı.'}</b>{' '}
+        {bekliyor
+          ? 'Bu sürede paneli misafir gibi salt okunur gezebilirsiniz; onay verildiğinde Excel yükleme ve düzenleme anında açılacak.'
+          : 'Verileri yalnızca izleme modunda görebilirsiniz. Yetki talebi için yöneticiyle iletişime geçin.'}
+      </div>
+    </div>
+  );
+}
+
+function MisafirVeriNotu({ bekliyor, reddedildi }: { bekliyor?: boolean; reddedildi?: boolean }) {
   return (
     <div className="rounded-xl border bg-card shadow-sm">
       <EmptyState
-        icon={<Eye className="w-6 h-6" />}
-        title="Misafir modunda veri yükleme kapalıdır"
-        desc="Yalnızca izleme yetkiniz var. Veri yüklemek, silmek veya düzenlemek için Yetkili hesabıyla giriş yapın."
+        icon={reddedildi ? <ShieldX className="w-6 h-6" /> : <Eye className="w-6 h-6" />}
+        title={reddedildi ? 'Hesabınız onaylanmadı — yükleme kapalı' : bekliyor ? 'Onay bekliyor — yükleme kapalı' : 'Misafir modunda veri yükleme kapalıdır'}
+        desc={reddedildi
+          ? 'Yalnızca izleme yetkiniz var. Yetki talebi için yöneticiyle iletişime geçin.'
+          : bekliyor
+            ? 'Hesabınız yönetici onayına sunuldu; onaylanınca veri yükleme ve düzenleme otomatik açılır. Şimdilik yalnızca izleyebilirsiniz.'
+            : 'Yalnızca izleme yetkiniz var. Veri yüklemek, silmek veya düzenlemek için Yetkili hesabıyla giriş yapın.'}
       />
     </div>
   );

@@ -2,11 +2,31 @@
   "rules": {
     "sevkiyat": {
       ".read": "auth != null",
-      ".write": "auth != null && auth.token.firebase.sign_in_provider != 'anonymous'"
+      ".write": "auth != null && (root.child('kurulum').child('admin').val() == auth.uid || root.child('kullanicilar').child(auth.uid).child('durum').val() == 'onayli')"
     },
     "meta": {
       ".read": "auth != null",
-      ".write": "auth != null && auth.token.firebase.sign_in_provider != 'anonymous'"
+      ".write": "auth != null && (root.child('kurulum').child('admin').val() == auth.uid || root.child('kullanicilar').child(auth.uid).child('durum').val() == 'onayli')"
+    },
+    "kurulum": {
+      ".read": "auth != null",
+      "admin": {
+        ".write": "auth != null && !data.exists() && newData.val() == auth.uid"
+      }
+    },
+    "kullanicilar": {
+      ".read": "auth != null && root.child('kurulum').child('admin').val() == auth.uid",
+      "$uid": {
+        ".read": "auth != null && (auth.uid == $uid || root.child('kurulum').child('admin').val() == auth.uid)",
+        ".write": "auth != null && (root.child('kurulum').child('admin').val() == auth.uid || (auth.uid == $uid && !data.exists()))",
+        ".validate": "newData.hasChildren(['email', 'durum', 'rol', 'istekTarihi'])",
+        "email": { ".validate": "newData.isString() && newData.val().length <= 120" },
+        "durum": { ".validate": "newData.isString() && (root.child('kurulum').child('admin').val() == auth.uid || newData.val() == 'bekliyor')" },
+        "rol": { ".validate": "newData.isString() && (root.child('kurulum').child('admin').val() == auth.uid || newData.val() == 'kullanici')" },
+        "istekTarihi": { ".validate": "newData.isNumber()" },
+        "onayTarihi": { ".validate": "newData.isNumber()" },
+        "$other": { ".validate": false }
+      }
     }
   }
 }

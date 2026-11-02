@@ -1,10 +1,13 @@
 /* Zustand store — veri, senkron, filtre, preset ve görünüm durumu */
 import { create } from 'zustand';
-import type { Row, Targets, FilterState, Preset, ViewId, SyncState } from './types';
+import type { User } from 'firebase/auth';
+import type { Row, Targets, FilterState, Preset, ViewId, SyncState, Yetki, KullaniciKaydi } from './types';
+import { yetkiYazar } from './types';
 import { idbGet, idbSet, cacheSave } from './cache';
 import {
   watchAuth, fbSignIn, fbSignUp, fbGuestSignIn, fbSignOut, fbLoadRows, fbUpsert, fbDeleteIds, fbDeleteAll,
   fbSaveTargets, fbLoadTargets, fbGetSyncVer, fbBumpVer, withRetry,
+  fbEnsureKullanici, fbWatchKullanici,
 } from './firebase';
 import { canonicalizeAll, reassignIds } from './id';
 import { buildDemoData, buildDemoTargets } from './demo';
@@ -24,6 +27,7 @@ interface SevkiyatState {
   user: string | null;
   misafir: boolean;
   demoMode: boolean;
+  yetki: Yetki;
   data: Row[];
   targets: Targets;
   syncVer: number | null;
@@ -57,6 +61,8 @@ interface SevkiyatState {
   applyPreset: (i: number) => void;
   deletePreset: (i: number) => void;
   _loadLocal: () => void;
+  _kurKullanici: (u: User) => Promise<void>;
+  _yetkiUnsub: (() => void) | null;
 }
 
 function loadPresets(): Preset[] {
@@ -80,6 +86,7 @@ export const useSevkiyat = create<SevkiyatState>((set, get) => ({
   user: null,
   misafir: false,
   demoMode: false,
+  yetki: 'yukleniyor',
   data: [],
   targets: {},
   syncVer: null,
@@ -90,18 +97,46 @@ export const useSevkiyat = create<SevkiyatState>((set, get) => ({
   presets: [],
   caps: { ...DEFAULT_CAPS },
   view: 'overview',
+  _yetkiUnsub: null,
 
   _loadLocal: () => set({ presets: loadPresets(), caps: loadCaps() }),
+
+  _kurKullanici: async (u) => {
+    try {
+      const k = await fbEnsureKullanici(u);
+      set({ yetki: k.rol === 'admin' ? 'admin' : k.durum });
+    } catch {
+      set({ yetki: 'bekliyor' });
+    }
+    // Onay gelince anında yetki güncellensin
+    try {
+      const stop = fbWatchKullanici(u.uid, (k: KullaniciKaydi | null) => {
+        if (!k) return;
+        set({ yetki: k.rol === 'admin' ? 'admin' : k.durum });
+      });
+      set({ _yetkiUnsub: stop });
+    } catch { /* dinleyici kurulamadı — tek seferlik yetki geçerli */ }
+  },
 
   initAuth: () => {
     get()._loadLocal();
     try {
       const un = watchAuth((u) => {
-        set({
-          authReady: true,
-          user: u ? (u.isAnonymous ? 'Misafir' : u.email || 'kullanıcı') : null,
-          misafir: !!u?.isAnonymous,
-        });
+        // önceki yetki dinleyicisini kapat
+        const prevUnsub = get()._yetkiUnsub;
+        if (prevUnsub) { prevUnsub(); set({ _yetkiUnsub: null }); }
+        if (!u) {
+          // demo modundaysa yetkiyi ezme (demo 'admin' görünür kalır)
+          if (!get().demoMode) set({ yetki: 'yukleniyor' });
+          set({ authReady: true, user: null, misafir: false });
+          return;
+        }
+        if (u.isAnonymous) {
+          set({ authReady: true, user: 'Misafir', misafir: true, yetki: 'misafir' });
+        } else {
+          set({ authReady: true, user: u.email || 'kullanıcı', misafir: false, yetki: 'yukleniyor' });
+          void get()._kurKullanici(u);
+        }
         if (u && !get().bootDone) {
           void get().bootData();
         }
@@ -120,6 +155,7 @@ export const useSevkiyat = create<SevkiyatState>((set, get) => ({
     const rows = buildDemoData();
     set({
       demoMode: true,
+      yetki: 'admin',
       data: rows,
       targets: buildDemoTargets(),
       syncState: 'demo',
@@ -129,7 +165,7 @@ export const useSevkiyat = create<SevkiyatState>((set, get) => ({
   },
 
   exitDemo: () => {
-    set({ demoMode: false, data: [], targets: {}, syncState: 'boot', bootDone: false });
+    set({ demoMode: false, yetki: 'yukleniyor', data: [], targets: {}, syncState: 'boot', bootDone: false });
   },
 
   signIn: async (email, password) => {
@@ -152,7 +188,9 @@ export const useSevkiyat = create<SevkiyatState>((set, get) => ({
     try {
       await fbSignOut();
     } finally {
-      set({ user: null, misafir: false, demoMode: false, data: [], targets: {}, syncState: 'boot', bootDone: false, view: 'overview' });
+      const un = get()._yetkiUnsub;
+      if (un) un();
+      set({ user: null, misafir: false, demoMode: false, yetki: 'yukleniyor', data: [], targets: {}, syncState: 'boot', bootDone: false, view: 'overview', _yetkiUnsub: null });
     }
   },
 
@@ -207,8 +245,8 @@ export const useSevkiyat = create<SevkiyatState>((set, get) => ({
 
   /** Excel satırlarını birleştir/değiştir + Firebase'e delta yaz */
   applyRows: async (incoming, sheetLabel, fileName, merge) => {
-    if (get().misafir) {
-      console.warn('[Sevkiyat] Misafir modunda veri yazma engellendi');
+    if (get().misafir || !yetkiYazar(get().yetki)) {
+      console.warn('[Sevkiyat] Yetkisiz yazım engellendi (misafir/onay bekliyor)');
       return false;
     }
     console.log('[Sevkiyat] ' + fileName + ' · ' + sheetLabel + ' · ' + incoming.length + ' satır · mod: ' + (merge ? 'birleştir' : 'değiştir'));
@@ -283,7 +321,7 @@ export const useSevkiyat = create<SevkiyatState>((set, get) => ({
   },
 
   clearAll: async () => {
-    if (get().misafir) return;
+    if (get().misafir || !yetkiYazar(get().yetki)) return;
     set({ data: [], syncState: 'saving' });
     void cacheSave([], get().targets);
     if (get().demoMode) {
@@ -303,7 +341,7 @@ export const useSevkiyat = create<SevkiyatState>((set, get) => ({
   },
 
   saveTargets: async (t) => {
-    if (get().misafir) return false;
+    if (get().misafir || !yetkiYazar(get().yetki)) return false;
     set({ targets: t });
     void cacheSave(get().data, t);
     if (get().demoMode) return true;
@@ -317,7 +355,7 @@ export const useSevkiyat = create<SevkiyatState>((set, get) => ({
   },
 
   importTargetsLocal: (t) => {
-    if (get().misafir) return;
+    if (get().misafir || !yetkiYazar(get().yetki)) return;
     set({ targets: t });
     void cacheSave(get().data, t);
   },

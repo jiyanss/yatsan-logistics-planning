@@ -89,16 +89,50 @@ aylık 10 GB ücretsiz indirim). Veri yapısı:
 - `meta/targets` — aylık hedefler
 - `meta/sync` — önbellek sürüm sayacı
 
-**Kurallar** (Firebase Console → Realtime Database → Rules sekmesi):
+**Kurallar** (Firebase Console → Realtime Database → Rules sekmesi) —
+kayıt olan herkes **onay bekliyor** durumunda başlar, yazma hakkı yalnızca
+yönetici ya da onaylı hesaplara açıktır:
 
 ```json
 {
   "rules": {
-    "sevkiyat": { ".read": "auth != null", ".write": "auth != null" },
-    "meta": { ".read": "auth != null", ".write": "auth != null" }
+    "sevkiyat": {
+      ".read": "auth != null",
+      ".write": "auth != null && (root.child('kurulum').child('admin').val() == auth.uid || root.child('kullanicilar').child(auth.uid).child('durum').val() == 'onayli')"
+    },
+    "meta": {
+      ".read": "auth != null",
+      ".write": "auth != null && (root.child('kurulum').child('admin').val() == auth.uid || root.child('kullanicilar').child(auth.uid).child('durum').val() == 'onayli')"
+    },
+    "kurulum": {
+      ".read": "auth != null",
+      "admin": {
+        ".write": "auth != null && !data.exists() && newData.val() == auth.uid"
+      }
+    },
+    "kullanicilar": {
+      ".read": "auth != null && root.child('kurulum').child('admin').val() == auth.uid",
+      "$uid": {
+        ".read": "auth != null && (auth.uid == $uid || root.child('kurulum').child('admin').val() == auth.uid)",
+        ".write": "auth != null && (root.child('kurulum').child('admin').val() == auth.uid || (auth.uid == $uid && !data.exists()))",
+        ".validate": "newData.hasChildren(['email', 'durum', 'rol', 'istekTarihi'])",
+        "email": { ".validate": "newData.isString() && newData.val().length <= 120" },
+        "durum": { ".validate": "newData.isString() && (root.child('kurulum').child('admin').val() == auth.uid || newData.val() == 'bekliyor')" },
+        "rol": { ".validate": "newData.isString() && (root.child('kurulum').child('admin').val() == auth.uid || newData.val() == 'kullanici')" },
+        "istekTarihi": { ".validate": "newData.isNumber()" },
+        "onayTarihi": { ".validate": "newData.isNumber()" },
+        "$other": { ".validate": false }
+      }
+    }
   }
 }
 ```
+
+**Onay sistemi ilk kurulum:** Güncelleme öncesinde kayıtlı hesaplardan panele
+**ilk giriş yapan** otomatik olarak **yönetici** olur (`kurulum/admin` tek sefer
+yazılabilir; bu hakkı yanlış hesap aldıysa konsoldan `kurulum/admin` düğümünü
+silip kendi hesabınızla girin). Yönetici, **Kullanıcı Yönetimi** sayfasından
+yeni kayıtları onaylar; onaylanmayan hesaplar salt okunur kalır.
 
 Depoda `database.rules.json` olarak da durur; CLI ile: `firebase deploy --only database`
 

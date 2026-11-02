@@ -69,7 +69,30 @@ export type ViewId =
   | 'rapor'
   | 'yrapor'
   | 'mkart'
+  | 'kullanicilar'
   | 'veri';
+
+/** Kullanıcı yetki seviyeleri — onay sistemi */
+export type Yetki =
+  | 'yukleniyor'   // auth çözümleniyor
+  | 'misafir'      // anonim oturum — salt okunur
+  | 'admin'        // yönetici — her şey + kullanıcı onayları
+  | 'onayli'       // admin tarafından onaylanmış üye — yazma yetkisi var
+  | 'bekliyor'     // kayıt tamam, admin onayı bekleniyor — salt okunur
+  | 'reddedildi';  // admin tarafından reddedildi — salt okunur
+
+export function yetkiYazar(y: Yetki): boolean {
+  return y === 'admin' || y === 'onayli';
+}
+
+/** RTDB kullanicilar/{uid} kaydı */
+export interface KullaniciKaydi {
+  email: string;
+  rol: 'admin' | 'kullanici';
+  durum: 'onayli' | 'bekliyor' | 'reddedildi';
+  istekTarihi: number;
+  onayTarihi?: number | null;
+}
 
 export type SyncState = 'boot' | 'synced' | 'saving' | 'offline' | 'demo';
 

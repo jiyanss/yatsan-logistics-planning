@@ -14,11 +14,11 @@ import {
   type Firestore,
 } from 'firebase/firestore';
 import {
-  getDatabase, ref, get, set, update, runTransaction,
+  getDatabase, ref, get, set, update, runTransaction, onValue,
   type Database,
 } from 'firebase/database';
 import { firebaseConfig } from './firebaseConfig';
-import type { Row, DbDoc, Targets } from './types';
+import type { Row, DbDoc, Targets, KullaniciKaydi } from './types';
 import { isoDay } from './core';
 import { hydrate } from './dates';
 import { safeDocId } from './id';
@@ -236,6 +236,88 @@ export async function fbMigrateFirestoreToRtdb(): Promise<MigrationResult> {
   const check = await get(ref(getRtdb(), 'sevkiyat'));
   const count = check.exists() ? Object.keys(check.val()).length : 0;
   return { rows: count, targets, ver };
+}
+
+/* ---------- Kullanıcı onay sistemi ----------
+   - kurulum/admin : ilk hak sahibi (güncelleme öncesi kayıtlı) hesap uid'sini alır; sonradan değiştirilemez
+   - kullanicilar/{uid} : { email, rol, durum, istekTarihi, onayTarihi }
+   - Yazma yetkisi: rol admin VEYA durum onaylı. Bekleyen/reddedilen hesaplar salt okunurdur. */
+
+/** Bu tarihten ÖNCE kayıtlı hesaplar ilk girişlerinde yönetici hakkını alır (bir kez, kalıcı) */
+export const ADMIN_HAK_KESIN_TARIH = '2026-11-02T00:00:00Z';
+
+/** Yönetici hakkını al — kurulum/admin boşsa uid yazılır (ilk gelen kazanır) */
+export async function fbClaimAdmin(uid: string): Promise<boolean> {
+  const res = await runTransaction(ref(getRtdb(), 'kurulum/admin'), (cur) =>
+    cur == null ? uid : undefined
+  );
+  return res.committed;
+}
+
+/** Oturum açan kullanıcı için kayıt/yönetici kurulumu. Sonucu (kayıt) döner. */
+export async function fbEnsureKullanici(u: User): Promise<KullaniciKaydi> {
+  const rdb = getRtdb();
+
+  // 1) Güncelleme öncesi kayıtlı hesap + hak henüz alınmamış → yönetici hakkını al
+  const created = u.metadata?.creationTime ? Date.parse(u.metadata.creationTime) : 0;
+  const hakSahibi = created > 0 && created < Date.parse(ADMIN_HAK_KESIN_TARIH);
+  if (hakSahibi) {
+    try { await fbClaimAdmin(u.uid); } catch { /* alınamadı — normal üye olur */ }
+  }
+  const claimSnap = await get(ref(rdb, 'kurulum/admin')).catch(() => null);
+  const adminMi = !!claimSnap && claimSnap.exists() && String(claimSnap.val()) === u.uid;
+
+  // 2) Kayıt yoksa oluştur (admin: onaylı · normal üye: onay bekliyor)
+  const refU = ref(rdb, 'kullanicilar/' + u.uid);
+  const snap = await get(refU).catch(() => null);
+  if (snap && snap.exists()) {
+    const k = snap.val() as KullaniciKaydi;
+    // kurulum/admin bu kullanıcıysa ama kayıt henüz admin değilse yükselt
+    if (adminMi && (k.rol !== 'admin' || k.durum !== 'onayli')) {
+      await set(refU, { ...k, rol: 'admin', durum: 'onayli', onayTarihi: k.onayTarihi || Date.now() });
+      return { ...k, rol: 'admin', durum: 'onayli', onayTarihi: k.onayTarihi || Date.now() };
+    }
+    return k;
+  }
+  const yeni: KullaniciKaydi = {
+    email: u.email || '',
+    rol: adminMi ? 'admin' : 'kullanici',
+    durum: adminMi ? 'onayli' : 'bekliyor',
+    istekTarihi: Date.now(),
+    onayTarihi: adminMi ? Date.now() : null,
+  };
+  await set(refU, yeni);
+  return yeni;
+}
+
+/** Kullanıcının kendi kaydını canlı dinle (onay gelince anında yetki güncellenir) */
+export function fbWatchKullanici(uid: string, cb: (k: KullaniciKaydi | null) => void): () => void {
+  const r = ref(getRtdb(), 'kullanicilar/' + uid);
+  return onValue(r, (snap) => cb(snap.exists() ? (snap.val() as KullaniciKaydi) : null), () => cb(null));
+}
+
+export interface KullaniciSatiri { uid: string; k: KullaniciKaydi }
+
+/** Tüm kullanıcıları canlı dinle (yalnızca yönetici kurallarda okuma yapabilir) */
+export function fbWatchKullanicilar(cb: (list: KullaniciSatiri[]) => void): () => void {
+  const r = ref(getRtdb(), 'kullanicilar');
+  return onValue(
+    r,
+    (snap) => {
+      const val = snap.val() as Record<string, KullaniciKaydi> | null;
+      const list: KullaniciSatiri[] = val
+        ? Object.keys(val).map((uid) => ({ uid, k: val[uid] || ({ email: '', rol: 'kullanici', durum: 'bekliyor', istekTarihi: 0 } as KullaniciKaydi) }))
+        : [];
+      cb(list);
+    },
+    () => cb([])
+  );
+}
+
+/** Yönetici onayı: durum güncelle (onayli | bekliyor | reddedildi) */
+export async function fbSetDurum(uid: string, durum: KullaniciKaydi['durum']): Promise<void> {
+  const patch: Partial<KullaniciKaydi> = { durum, onayTarihi: durum === 'onayli' ? Date.now() : null };
+  await update(ref(getRtdb(), 'kullanicilar/' + uid), patch);
 }
 
 /* ---------- Retry ---------- */

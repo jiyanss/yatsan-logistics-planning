@@ -131,6 +131,7 @@ export default function LoginGate({ children }: { children: React.ReactNode }) {
                 <TabsContent value="kayit" className="space-y-3 pt-3">
                   <p className="text-xs text-muted-foreground">
                     İlk kaydı siz oluşturun; Firebase konsolunda &quot;E-posta/Şifre&quot; yöntemi etkin olmalıdır.
+                    Kaydınız <b>yönetici onayına</b> düşer — onaya kadar paneli salt okunur gezebilirsiniz.
                   </p>
                   <CredentialFields email={email} pass={pass} setEmail={setEmail} setPass={setPass} busy={busy} onSubmit={() => doAuth('up')} submitLabel="Kayıt oluştur" />
                 </TabsContent>

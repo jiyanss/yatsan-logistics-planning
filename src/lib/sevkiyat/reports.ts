@@ -298,9 +298,16 @@ export function musteriKartlari(data: Row[], seciliYil: number | null): MusteriK
     o.ortSefer = o.sefer ? o.m3 / o.sefer : 0;
     o.yillar.sort((a, b) => a.yil - b.yil);
     if (curY != null && prevYil != null) {
+      // Değişim her zaman son yıl (veya seçili yıl) hacmi ile önceki yıl hacmi arasında olur.
+      // "Tüm yıllar" modunda o.m3 tüm zamanların toplamıdır; bu yüzden karşılaştırmada
+      // mutlaka curY'nin yıllık toplamı (o.yillar) kullanılmalı, aksi halde rozet
+      // "tüm zamanlar vs önceki yıl" gibi anlamsız devre bir yüzde üretir.
+      const c = o.yillar.find((y) => y.yil === curY);
       const p = o.yillar.find((y) => y.yil === prevYil);
-      if (p && p.m3 > 0) o.degisim = ((o.m3 - p.m3) / p.m3) * 100;
-      else if (o.m3 > 0) o.yeniMi = true;
+      if (c && p && p.m3 > 0) o.degisim = ((c.m3 - p.m3) / p.m3) * 100;
+      // "Yeni" rozeti yalnızca ilk sevkiyatı son yılda (curY) olan müşterilere verilmeli;
+      // 2025'te sevkiyatı olmayan ama daha önce (örn. 2024 ve öncesi) yüklemiş müşteri "Yeni" değildir.
+      else o.yeniMi = o.yillar.length > 0 && o.yillar[0].yil === curY;
     }
     /* ritim + son yükleme + en yoğun ay */
     const t = track.get(o.name);

@@ -1,11 +1,11 @@
 {
   "rules": {
     "sevkiyat": {
-      ".read": "auth != null",
+      ".read": "auth != null && (root.child('kurulum').child('admin').val() == auth.uid || root.child('kullanicilar').child(auth.uid).child('durum').val() == 'onayli')",
       ".write": "auth != null && (root.child('kurulum').child('admin').val() == auth.uid || root.child('kullanicilar').child(auth.uid).child('durum').val() == 'onayli')"
     },
     "meta": {
-      ".read": "auth != null",
+      ".read": "auth != null && (root.child('kurulum').child('admin').val() == auth.uid || root.child('kullanicilar').child(auth.uid).child('durum').val() == 'onayli')",
       ".write": "auth != null && (root.child('kurulum').child('admin').val() == auth.uid || root.child('kullanicilar').child(auth.uid).child('durum').val() == 'onayli')"
     },
     "kurulum": {

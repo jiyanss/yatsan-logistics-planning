@@ -90,18 +90,18 @@ aylık 10 GB ücretsiz indirim). Veri yapısı:
 - `meta/sync` — önbellek sürüm sayacı
 
 **Kurallar** (Firebase Console → Realtime Database → Rules sekmesi) —
-kayıt olan herkes **onay bekliyor** durumunda başlar, yazma hakkı yalnızca
-yönetici ya da onaylı hesaplara açıktır:
+kayıt olan herkes **onay bekliyor** durumunda başlar; okuma ve yazma hakkı yalnızca
+yönetici ya da onaylı hesaplara açıktır (bekleyen/reddedilen üye hiçbir veri okuyamaz):
 
 ```json
 {
   "rules": {
     "sevkiyat": {
-      ".read": "auth != null",
+      ".read": "auth != null && (root.child('kurulum').child('admin').val() == auth.uid || root.child('kullanicilar').child(auth.uid).child('durum').val() == 'onayli')",
       ".write": "auth != null && (root.child('kurulum').child('admin').val() == auth.uid || root.child('kullanicilar').child(auth.uid).child('durum').val() == 'onayli')"
     },
     "meta": {
-      ".read": "auth != null",
+      ".read": "auth != null && (root.child('kurulum').child('admin').val() == auth.uid || root.child('kullanicilar').child(auth.uid).child('durum').val() == 'onayli')",
       ".write": "auth != null && (root.child('kurulum').child('admin').val() == auth.uid || root.child('kullanicilar').child(auth.uid).child('durum').val() == 'onayli')"
     },
     "kurulum": {

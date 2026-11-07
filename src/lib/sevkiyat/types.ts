@@ -75,11 +75,10 @@ export type ViewId =
 /** Kullanıcı yetki seviyeleri — onay sistemi */
 export type Yetki =
   | 'yukleniyor'   // auth çözümleniyor
-  | 'misafir'      // anonim oturum — salt okunur
   | 'admin'        // yönetici — her şey + kullanıcı onayları
   | 'onayli'       // admin tarafından onaylanmış üye — yazma yetkisi var
-  | 'bekliyor'     // kayıt tamam, admin onayı bekleniyor — salt okunur
-  | 'reddedildi';  // admin tarafından reddedildi — salt okunur
+  | 'bekliyor'     // kayıt tamam, admin onayı bekleniyor — hiçbir veri gösterilmez
+  | 'reddedildi';  // admin tarafından reddedildi — hiçbir veri gösterilmez
 
 export function yetkiYazar(y: Yetki): boolean {
   return y === 'admin' || y === 'onayli';

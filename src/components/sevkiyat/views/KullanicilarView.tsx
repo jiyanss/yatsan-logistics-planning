@@ -47,7 +47,7 @@ export default function KullanicilarView() {
       await fbSetDurum(uid, durum);
       toast({
         title: durum === 'onayli' ? '✓ Onaylandı' : durum === 'reddedildi' ? 'Reddedildi' : 'Beklemeye alındı',
-        description: email + ' → ' + (durum === 'onayli' ? 'yazma yetkisi verildi' : durum === 'reddedildi' ? 'salt okunur (red)' : 'onay bekliyor'),
+        description: email + ' → ' + (durum === 'onayli' ? 'yazma yetkisi verildi' : durum === 'reddedildi' ? 'veri erişimi kapalı (red)' : 'onay ekranı — veri erişimi kapalı'),
       });
     } catch (e) {
       toast({ title: 'Güncellenemedi', description: e instanceof Error ? e.message : String(e), variant: 'destructive' });
@@ -83,7 +83,7 @@ export default function KullanicilarView() {
         title="👥 Üyeler"
         desc={demoMode
           ? 'Demo modunda gerçek kullanıcı listesi gösterilmez — Firebase\u2019e geçince canlı listelenir.'
-          : 'Bekleyen kayıtlar üstte. Onaylanan üye Excel yükleyip verileri güncelleyebilir; bekleyen/reddedilen yalnızca izler.'}
+          : 'Bekleyen kayıtlar üstte. Onaylanan üye Excel yükleyip verileri güncelleyebilir; bekleyen/reddedilen üye hiçbir veri göremez (girişte onay ekranı görür).'}
       >
         {list === null ? (
           <div className="flex items-center gap-2 py-10 justify-center text-muted-foreground text-sm">
@@ -165,9 +165,10 @@ export default function KullanicilarView() {
       </SectionCard>
 
       <div className="rounded-xl border border-dashed bg-muted/30 px-4 py-3 text-[11.5px] text-muted-foreground leading-relaxed">
-        <b className="text-foreground">Nasıl çalışır?</b> Yeni kayıt olan üye <b>onay bekliyor</b> durumunda başlar ve paneli
-        misafir gibi salt okunur gezer. Yönetici onay verince yazma yetkisi (Excel yükleme, düzenleme, silme) anında açılır.
-        Kural katmanında da yazma yetkisi yalnızca onaylı hesaplara verildiği için bu sınır istemciyi atlayan denemelere karşı da geçerlidir.
+        <b className="text-foreground">Nasıl çalışır?</b> Yeni kayıt olan üye <b>onay bekliyor</b> durumunda başlar; giriş yapsa bile
+        yalnızca <b>“onay bekliyor”</b> ekranını görür — hiçbir veri gösterilmez ve indirilmez. Yönetici onay verince panel,
+        Excel yükleme, düzenleme ve silme yetkileri anında açılır. Kural katmanında okuma-yazma yalnızca onaylı hesaplara
+        verildiği için bu sınır istemciyi atlayan denemelere karşı da geçerlidir.
       </div>
     </div>
   );

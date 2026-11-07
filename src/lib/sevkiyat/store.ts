@@ -5,7 +5,7 @@ import type { Row, Targets, FilterState, Preset, ViewId, SyncState, Yetki, Kulla
 import { yetkiYazar } from './types';
 import { idbGet, idbSet, cacheSave } from './cache';
 import {
-  watchAuth, fbSignIn, fbSignUp, fbGuestSignIn, fbSignOut, fbLoadRows, fbUpsert, fbDeleteIds, fbDeleteAll,
+  watchAuth, fbSignIn, fbSignUp, fbSignOut, fbLoadRows, fbUpsert, fbDeleteIds, fbDeleteAll,
   fbSaveTargets, fbLoadTargets, fbGetSyncVer, fbBumpVer, withRetry,
   fbEnsureKullanici, fbWatchKullanici,
 } from './firebase';
@@ -25,7 +25,6 @@ export const DEFAULT_FILTERS: FilterState = {
 interface SevkiyatState {
   authReady: boolean;
   user: string | null;
-  misafir: boolean;
   demoMode: boolean;
   yetki: Yetki;
   data: Row[];
@@ -44,7 +43,6 @@ interface SevkiyatState {
   exitDemo: () => void;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
-  signInGuest: () => Promise<void>;
   signOutUser: () => Promise<void>;
 
   bootData: () => Promise<void>;
@@ -84,7 +82,6 @@ function loadCaps(): Record<string, number> {
 export const useSevkiyat = create<SevkiyatState>((set, get) => ({
   authReady: false,
   user: null,
-  misafir: false,
   demoMode: false,
   yetki: 'yukleniyor',
   data: [],
@@ -102,17 +99,26 @@ export const useSevkiyat = create<SevkiyatState>((set, get) => ({
   _loadLocal: () => set({ presets: loadPresets(), caps: loadCaps() }),
 
   _kurKullanici: async (u) => {
+    // Kayıt/yönetici kurulumu — ağ hatasına karşı 2 tekrar
+    let k: KullaniciKaydi | null = null;
     try {
-      const k = await fbEnsureKullanici(u);
-      set({ yetki: k.rol === 'admin' ? 'admin' : k.durum });
-    } catch {
+      k = await withRetry(() => fbEnsureKullanici(u), 2);
+    } catch { /* ağ hatası — dinleyici düzeltinceye kadar kapalı ekran */ }
+    if (k) {
+      const y: Yetki = k.rol === 'admin' ? 'admin' : k.durum;
+      set({ yetki: y });
+      // Onaylıysa veri yüklemesini ŞİMDİ başlat; bekleyen/reddedilen asla yüklemez
+      if (yetkiYazar(y) && !get().bootDone) void get().bootData();
+    } else {
       set({ yetki: 'bekliyor' });
     }
-    // Onay gelince anında yetki güncellensin
+    // Onay gelince anında yetki + veri yükleme başlasın (ekran kendiliğinden panele döner)
     try {
-      const stop = fbWatchKullanici(u.uid, (k: KullaniciKaydi | null) => {
-        if (!k) return;
-        set({ yetki: k.rol === 'admin' ? 'admin' : k.durum });
+      const stop = fbWatchKullanici(u.uid, (rec: KullaniciKaydi | null) => {
+        if (!rec) return;
+        const y: Yetki = rec.rol === 'admin' ? 'admin' : rec.durum;
+        set({ yetki: y });
+        if (yetkiYazar(y) && !get().bootDone) void get().bootData();
       });
       set({ _yetkiUnsub: stop });
     } catch { /* dinleyici kurulamadı — tek seferlik yetki geçerli */ }
@@ -128,18 +134,19 @@ export const useSevkiyat = create<SevkiyatState>((set, get) => ({
         if (!u) {
           // demo modundaysa yetkiyi ezme (demo 'admin' görünür kalır)
           if (!get().demoMode) set({ yetki: 'yukleniyor' });
-          set({ authReady: true, user: null, misafir: false });
+          set({ authReady: true, user: null });
           return;
         }
+        // Anonim (eski misafir) oturumlar artık desteklenmiyor — oturumu kapat
         if (u.isAnonymous) {
-          set({ authReady: true, user: 'Misafir', misafir: true, yetki: 'misafir' });
-        } else {
-          set({ authReady: true, user: u.email || 'kullanıcı', misafir: false, yetki: 'yukleniyor' });
-          void get()._kurKullanici(u);
+          void fbSignOut();
+          set({ authReady: true, user: null });
+          return;
         }
-        if (u && !get().bootDone) {
-          void get().bootData();
-        }
+        set({ authReady: true, user: u.email || 'kullanıcı', yetki: 'yukleniyor' });
+        void get()._kurKullanici(u);
+        // NOT: veri yükleme burada başlamaz — yalnızca yetki 'admin'/'onayli' olduktan
+        // sonra _kurKullanici / canlı dinleyici bootData() çağırır.
       });
       // 6 sn içinde yanıt gelmezse ekranı serbest bırak (config hatalı olabilir)
       setTimeout(() => {
@@ -170,18 +177,12 @@ export const useSevkiyat = create<SevkiyatState>((set, get) => ({
 
   signIn: async (email, password) => {
     const u = await fbSignIn(email, password);
-    set({ user: u.email || 'kullanıcı', misafir: !!u.isAnonymous });
+    set({ user: u.email || 'kullanıcı' });
   },
 
   signUp: async (email, password) => {
     const u = await fbSignUp(email, password);
-    set({ user: u.email || 'kullanıcı', misafir: !!u.isAnonymous });
-  },
-
-  /** Misafir girişi — anonim oturum, salt okunur */
-  signInGuest: async () => {
-    const u = await fbGuestSignIn();
-    set({ user: u.isAnonymous ? 'Misafir' : u.email || 'kullanıcı', misafir: !!u.isAnonymous });
+    set({ user: u.email || 'kullanıcı' });
   },
 
   signOutUser: async () => {
@@ -190,7 +191,7 @@ export const useSevkiyat = create<SevkiyatState>((set, get) => ({
     } finally {
       const un = get()._yetkiUnsub;
       if (un) un();
-      set({ user: null, misafir: false, demoMode: false, yetki: 'yukleniyor', data: [], targets: {}, syncState: 'boot', bootDone: false, view: 'overview', _yetkiUnsub: null });
+      set({ user: null, demoMode: false, yetki: 'yukleniyor', data: [], targets: {}, syncState: 'boot', bootDone: false, view: 'overview', _yetkiUnsub: null });
     }
   },
 
@@ -245,8 +246,8 @@ export const useSevkiyat = create<SevkiyatState>((set, get) => ({
 
   /** Excel satırlarını birleştir/değiştir + Firebase'e delta yaz */
   applyRows: async (incoming, sheetLabel, fileName, merge) => {
-    if (get().misafir || !yetkiYazar(get().yetki)) {
-      console.warn('[Sevkiyat] Yetkisiz yazım engellendi (misafir/onay bekliyor)');
+    if (!yetkiYazar(get().yetki)) {
+      console.warn('[Sevkiyat] Yetkisiz yazım engellendi (onay bekliyor/reddedildi)');
       return false;
     }
     console.log('[Sevkiyat] ' + fileName + ' · ' + sheetLabel + ' · ' + incoming.length + ' satır · mod: ' + (merge ? 'birleştir' : 'değiştir'));
@@ -321,7 +322,7 @@ export const useSevkiyat = create<SevkiyatState>((set, get) => ({
   },
 
   clearAll: async () => {
-    if (get().misafir || !yetkiYazar(get().yetki)) return;
+    if (!yetkiYazar(get().yetki)) return;
     set({ data: [], syncState: 'saving' });
     void cacheSave([], get().targets);
     if (get().demoMode) {
@@ -341,7 +342,7 @@ export const useSevkiyat = create<SevkiyatState>((set, get) => ({
   },
 
   saveTargets: async (t) => {
-    if (get().misafir || !yetkiYazar(get().yetki)) return false;
+    if (!yetkiYazar(get().yetki)) return false;
     set({ targets: t });
     void cacheSave(get().data, t);
     if (get().demoMode) return true;
@@ -355,7 +356,7 @@ export const useSevkiyat = create<SevkiyatState>((set, get) => ({
   },
 
   importTargetsLocal: (t) => {
-    if (get().misafir || !yetkiYazar(get().yetki)) return;
+    if (!yetkiYazar(get().yetki)) return;
     set({ targets: t });
     void cacheSave(get().data, t);
   },

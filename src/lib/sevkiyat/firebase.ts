@@ -6,7 +6,7 @@
 import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
 import {
   getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword,
-  signInAnonymously, signOut, onAuthStateChanged, updateProfile,
+  signOut, onAuthStateChanged, updateProfile,
   type Auth, type User,
 } from 'firebase/auth';
 import {
@@ -65,13 +65,6 @@ export async function fbSignUp(email: string, password: string, name?: string): 
   return cred.user;
 }
 
-/** Misafir girişi — anonim oturum; RTDB kurallarında yazma hakkı yoktur (salt okunur) */
-export async function fbGuestSignIn(): Promise<User> {
-  const { auth } = fb();
-  const cred = await signInAnonymously(auth);
-  return cred.user;
-}
-
 export async function fbSignOut(): Promise<void> {
   const { auth } = fb();
   await signOut(auth);
@@ -88,8 +81,7 @@ export function authErrorTr(code: string): string {
     'auth/email-already-in-use': 'Bu e-posta zaten kayıtlı. Giriş yapmayı deneyin.',
     'auth/weak-password': 'Şifre çok zayıf (en az 6 karakter).',
     'auth/too-many-requests': 'Çok fazla deneme. Bir süre sonra tekrar deneyin.',
-    'auth/operation-not-allowed': 'Bu oturum yöntemi Firebase konsolunda etkin değil (E-posta/Şifre veya Anonim).',
-    'auth/admin-restricted-operation': 'Firebase konsolunda "Anonim" oturum yöntemi etkinleştirilmemiş. Konsol → Authentication → Sign-in method → Anonim\u2019i etkinleştirin.',
+    'auth/operation-not-allowed': 'Bu oturum yöntemi Firebase konsolunda etkin değil (E-posta/Şifre).',
     'auth/network-request-failed': 'Ağ hatası: Firebase\u2019e ulaşılamıyor.',
     'auth/configuration-not-found': 'Firebase projesinde kimlik doğrulama yapılandırılmamış.',
   };
@@ -241,7 +233,8 @@ export async function fbMigrateFirestoreToRtdb(): Promise<MigrationResult> {
 /* ---------- Kullanıcı onay sistemi ----------
    - kurulum/admin : ilk hak sahibi (güncelleme öncesi kayıtlı) hesap uid'sini alır; sonradan değiştirilemez
    - kullanicilar/{uid} : { email, rol, durum, istekTarihi, onayTarihi }
-   - Yazma yetkisi: rol admin VEYA durum onaylı. Bekleyen/reddedilen hesaplar salt okunurdur. */
+   - Yazma yetkisi: rol admin VEYA durum onaylı. Bekleyen/reddedilen hesaplar hiçbir veriye erişemez
+     (yalnızca "onay bekliyor" ekranı görür; kural katmanında okuma da kapalıdır). */
 
 /** Bu tarihten ÖNCE kayıtlı hesaplar ilk girişlerinde yönetici hakkını alır (bir kez, kalıcı) */
 export const ADMIN_HAK_KESIN_TARIH = '2026-11-02T00:00:00Z';
